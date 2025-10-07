@@ -1,4 +1,4 @@
-import { Container, Title, Stack } from '@mantine/core'
+import { Container, Title, Stack } from '@mantine/core';
 
 function App() {
   return (
@@ -7,7 +7,7 @@ function App() {
         <Title order={1}>Kipu</Title>
       </Stack>
     </Container>
-  )
+  );
 }
 
-export default App
+export default App;

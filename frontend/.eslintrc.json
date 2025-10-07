@@ -11,14 +11,8 @@
     "browser": true,
     "jest": true
   },
-  "extends": [
-    "airbnb",
-    "prettier",
-    "prettier/react"
-  ],
-  "plugins": [
-    "react-hooks"
-  ],
+  "extends": ["airbnb", "prettier", "prettier/react"],
+  "plugins": ["react-hooks"],
   "rules": {
     "react-hooks/rules-of-hooks": "error",
     "react-hooks/exhaustive-deps": "warn",
@@ -33,13 +27,28 @@
         "props": false
       }
     ],
-    "no-return-assign": [
-      2,
-      "except-parens"
-    ],
+    "no-return-assign": [2, "except-parens"],
     "no-use-before-define": 0,
     "import/prefer-default-export": 0,
     "import/no-cycle": 0,
+    "import/order": [
+      "error",
+      {
+        "groups": ["builtin", "external", "internal", "parent", "sibling", "index"],
+        "pathGroups": [
+          {
+            "pattern": "@/**",
+            "group": "internal"
+          }
+        ],
+        "pathGroupsExcludedImportTypes": ["builtin"],
+        "newlines-between": "always",
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
+        }
+      }
+    ],
     "react/no-array-index-key": 0,
     "react/forbid-prop-types": 0,
     "react/prop-types": [
@@ -48,10 +57,7 @@
         "skipUndeclared": true
       }
     ],
-    "react/jsx-fragments": [
-      2,
-      "element"
-    ],
+    "react/jsx-fragments": [2, "element"],
     "react/state-in-constructor": 0,
     "react/jsx-props-no-spreading": 0,
     "jsx-a11y/click-events-have-key-events": 0
@@ -59,10 +65,7 @@
   "settings": {
     "import/resolver": {
       "node": {
-        "moduleDirectory": [
-          "node_modules",
-          "src/"
-        ]
+        "moduleDirectory": ["node_modules", "src/"]
       }
     }
   }
