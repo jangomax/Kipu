@@ -1,12 +1,14 @@
-import { Container, Title, Stack } from '@mantine/core';
+import { Container, Stack } from '@mantine/core';
+import { Masthead } from '@/components/shared';
 
 function App() {
   return (
-    <Container size="md" py="xl">
-      <Stack>
-        <Title order={1}>Kipu</Title>
-      </Stack>
-    </Container>
+    <>
+      <Masthead />
+      <Container size="md" py="xl">
+        <Stack></Stack>
+      </Container>
+    </>
   );
 }
 
