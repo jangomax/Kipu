@@ -1,13 +1,12 @@
-import { Container, Stack } from '@mantine/core';
+import { RouterProvider } from 'react-router';
 import { Masthead } from '@/components/shared';
+import router from '@/routes';
 
 function App() {
   return (
     <>
       <Masthead />
-      <Container size="md" py="xl">
-        <Stack></Stack>
-      </Container>
+      <RouterProvider router={router} />
     </>
   );
 }
