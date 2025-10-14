@@ -7,20 +7,14 @@ const router = Router();
  * Generates a random string for the code_verifier
  */
 function generateCodeVerifier(length = 64): string {
-  return crypto
-    .randomBytes(length)
-    .toString("base64url")
-    .slice(0, length);
+  return crypto.randomBytes(length).toString("base64url").slice(0, length);
 }
 
 /**
  * Hashes the verifier to create a code_challenge
  */
 function generateCodeChallenge(verifier: string): string {
-  return crypto
-    .createHash("sha256")
-    .update(verifier)
-    .digest("base64url");
+  return crypto.createHash("sha256").update(verifier).digest("base64url");
 }
 
 /**
