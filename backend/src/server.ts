@@ -1,11 +1,10 @@
-const express = require('express')
-const app = express()
-const port = 3000
+import express from "express";
+import authRoutes from "./routes/auth";
+import dotenv from "dotenv";
 
-app.get('/', (req, res) => {
-  res.send('67!')
-})
+dotenv.config();
+const app = express();
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+app.use("", authRoutes);
+
+app.listen(3000, () => console.log("Server on http://localhost:3000"));
