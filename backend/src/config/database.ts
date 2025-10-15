@@ -12,8 +12,8 @@ export const connectDb = async (): Promise<void> => {
     await mongoose.connection.db?.admin().command({ ping: 1 });
 
     console.log("Successfully connected to MongoDB");
-  } catch (error) {
-    console.error("MongoDB connection error:", error);
+  } catch (e) {
+    console.error("MongoDB connection error:");
     process.exit(1);
   }
 };
@@ -22,6 +22,6 @@ mongoose.connection.on("disconnected", () => {
   console.log("MongoDB disconnected");
 });
 
-mongoose.connection.on("error", (error) => {
+mongoose.connection.on("error", (error: Error) => {
   console.error(`MongoDB error: ${error}`);
 });
