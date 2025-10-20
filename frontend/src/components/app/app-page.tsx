@@ -1,60 +1,31 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { Container, Text, Loader, Stack, Alert, Card, Avatar, Group, Title } from '@mantine/core';
-import { clearTokens } from '@/util/auth';
-
-interface SpotifyUser {
-  display_name: string;
-  email: string;
-  id: string;
-  images?: { url: string }[];
-  country?: string;
-  product?: string;
-}
+import { Container, Text, Loader, Stack, Alert, Title, SimpleGrid } from '@mantine/core';
+import { useSpotifyUser } from '@/hooks/useSpotifyUser';
+import { usePlaylists } from '@/hooks/usePlaylists';
+import { PlaylistCard } from '@/components/app/playlist';
+import { getAccessToken } from '@/util/auth';
 
 export const AppPage = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<SpotifyUser | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: user, isLoading: loadingUser, isError: userError } = useSpotifyUser();
+  const { data: playlists, isLoading: loadingPlaylists } = usePlaylists();
 
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      const accessToken = localStorage.getItem('spotify_access_token');
+    if (!user && !loadingUser && userError) {
+      navigate('/');
+    }
+  }, [user, loadingUser, userError, navigate]);
 
-      if (!accessToken) {
-        navigate('/');
-        return;
-      }
+  const accessToken = getAccessToken();
 
-      try {
-        const response = await fetch('https://api.spotify.com/v1/me', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
+  useEffect(() => {
+    if (!accessToken) {
+      navigate('/'); // redirect if user not signed in (no access token)
+    }
+  }, [accessToken, navigate]);
 
-        if (!response.ok) {
-          if (response.status === 401) {
-            clearTokens();
-            navigate('/');
-            return;
-          }
-          throw new Error('Failed to fetch user info');
-        }
-
-        const userData = await response.json();
-        setUser(userData);
-      } catch (err) {
-        console.error('Error fetching user info:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load user information');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserInfo();
-  }, [navigate]);
+  const loading = loadingUser || loadingPlaylists;
 
   if (loading) {
     return (
@@ -67,11 +38,11 @@ export const AppPage = () => {
     );
   }
 
-  if (error) {
+  if (userError) {
     return (
       <Container size="sm" style={{ marginTop: '5rem' }}>
         <Alert color="red" title="Error">
-          {error}
+          Failed to load user information
         </Alert>
       </Container>
     );
@@ -81,30 +52,23 @@ export const AppPage = () => {
     return null;
   }
 
-  return (
-    <Container size="md" style={{ marginTop: '3rem' }}>
-      <Card shadow="sm" padding="lg" radius="md" withBorder>
-        <Group>
-          {user.images && user.images.length > 0 && (
-            <Avatar src={user.images[0].url} size="xl" radius="xl" />
-          )}
-          <Stack gap="xs">
-            <Title order={2}>{user.display_name}</Title>
-            <Text size="sm" c="dimmed">
-              {user.email}
-            </Text>
-            {user.product && (
-              <Text size="sm" c="dimmed">
-                Spotify {user.product.charAt(0).toUpperCase() + user.product.slice(1)}
-              </Text>
-            )}
-          </Stack>
-        </Group>
-      </Card>
+  if (!accessToken) {
+    return null;
+  }
 
+  return (
+    <Container size="xl">
       <Stack gap="md" style={{ marginTop: '2rem' }}>
-        <Title order={3}>Welcome to Kipu!</Title>
-        <Text>Your Spotify account has been successfully connected.</Text>
+        <Title order={3}>Your Playlists</Title>
+        {playlists && playlists.items.length > 0 ? (
+          <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 6 }} spacing="lg">
+            {playlists.items.map((playlist) => (
+              <PlaylistCard key={playlist.id} playlist={playlist} />
+            ))}
+          </SimpleGrid>
+        ) : (
+          <Text c="dimmed">No playlists found</Text>
+        )}
       </Stack>
     </Container>
   );
