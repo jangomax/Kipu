@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/util/constants';
 import { generateCodeVerifier, setCodeVerifier } from '@/util/auth';
-import { LoginResponse } from '@/types';
+import { LoginResponse } from '@/types/auth';
 
 export const useSpotifyLogin = () => {
   return useMutation({

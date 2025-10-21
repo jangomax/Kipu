@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { spotifyGet } from '@/util/api-helper';
 import { getAccessToken, clearTokens } from '@/util/auth';
-import { GetPlaylistsResponse } from '@/types';
+import { GetPlaylistsResponse } from '@/types/spotify';
 
 export const usePlaylists = () => {
   return useQuery({

@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { API_BASE_URL } from '@/util/constants';
 import { getCodeVerifier, clearCodeVerifier, setTokens } from '@/util/auth';
-import { TokenExchangeResponse } from '@/types';
+import { TokenExchangeResponse } from '@/types/auth';
 
 export const useTokenExchange = () => {
   return useMutation({

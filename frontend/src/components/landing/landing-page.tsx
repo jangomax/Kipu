@@ -60,7 +60,7 @@ export const LandingPage = () => {
               <Avatar src={user.images[0].url} size="xl" radius="xl" />
             )}
             <Stack gap="xs">
-              <Title order={3}>{user.display_name}</Title>
+              <Title order={3}>{user.displayName}</Title>
               <Text size="sm" c="dimmed">
                 {user.email}
               </Text>

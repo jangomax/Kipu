@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { spotifyGet } from '@/util/api-helper';
 import { getAccessToken, clearTokens } from '@/util/auth';
 import { AxiosError } from 'axios';
-import { SpotifyUser } from '@/types';
+import { SpotifyUser } from '@/types/spotify';
 
 export const useSpotifyUser = () => {
   return useQuery({

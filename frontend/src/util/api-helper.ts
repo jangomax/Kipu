@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { QueryClient } from '@tanstack/react-query';
+import { camelKeys } from 'js-convert-case';
 import { API_BASE_URL, SPOTIFY_API_BASE_URL } from './constants';
 import { getAccessToken } from './auth';
 
@@ -38,7 +39,7 @@ export const post = async <T>(
 
 export const spotifyGet = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   const response = await spotifyApiClient.get<T>(url, config);
-  return response.data;
+  return camelKeys(response.data, { recursive: true }) as T;
 };
 
 export const queryClient = new QueryClient({
