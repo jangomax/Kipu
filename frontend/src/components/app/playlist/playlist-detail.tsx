@@ -90,7 +90,7 @@ export const PlaylistDetailPage = () => {
 
   if (!playlistId) {
     return (
-      <Container size="lg" style={{ marginTop: '2rem' }}>
+      <Container size="lg" style={{ marginTop: '1rem' }}>
         <Alert color="red" title="Playlist not found">
           Missing playlist identifier.
         </Alert>
@@ -132,7 +132,7 @@ export const PlaylistDetailPage = () => {
   const coverImage = playlist.images?.[0]?.url;
 
   return (
-    <Container size="lg" style={{ marginTop: '2rem' }}>
+    <Container size="lg" style={{ marginTop: '1rem' }}>
       <Stack gap="xl">
         <Button
           variant="subtle"
@@ -183,7 +183,7 @@ export const PlaylistDetailPage = () => {
           </Stack>
         </Group>
 
-        <Stack gap="md">
+        <Stack gap="xs">
           {playlistTracks?.items.map((item) => {
             const track = item.track;
 
