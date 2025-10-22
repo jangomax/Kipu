@@ -1,4 +1,4 @@
-import { SpotifyPlaylist } from './objects';
+import { SpotifyPlaylist, SpotifyPlaylistTrackItem } from './objects';
 
 export interface GetPlaylistsResponse {
   href: string;
@@ -8,4 +8,14 @@ export interface GetPlaylistsResponse {
   previous?: string;
   total: number;
   items: SpotifyPlaylist[];
+}
+
+export interface GetPlaylistTracksResponse {
+  href: string;
+  items: SpotifyPlaylistTrackItem[];
+  limit: number;
+  next?: string;
+  offset: number;
+  previous?: string;
+  total: number;
 }

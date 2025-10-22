@@ -13,6 +13,7 @@
     "@mantine/core": "^8.3.3",
     "@mantine/hooks": "^8.3.3",
     "@tanstack/react-query": "^5.62.11",
+    "@tabler/icons-react": "^3.24.0",
     "axios": "^1.7.9",
     "js-convert-case": "^4.2.0",
     "netsh": "^1.0.1",
