@@ -1,4 +1,4 @@
-import { RouterProvider } from 'react-router';
+import { Link, RouterProvider } from 'react-router';
 import router from '@/routes';
 import { AppShell, Title } from '@mantine/core';
 
