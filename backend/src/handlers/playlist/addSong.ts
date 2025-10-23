@@ -46,7 +46,7 @@ export const addSongHandler = async (req: Request, res: Response) => {
     const trackIds = uris.map((uri) => uri.split(":")[2]);
     const now = new Date();
 
-    const commitId = `${userId}|${playlistId}|${now}`;
+    const commitId = `${userId}|${playlistId}|${now.toISOString()}`;
 
     const commit = new Commit({
       commitId: commitId,
