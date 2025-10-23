@@ -19,3 +19,13 @@ export interface GetPlaylistTracksResponse {
   previous?: string;
   total: number;
 }
+
+export interface AddSongRequest {
+  userId: string;
+  uris: string[];
+  position?: number;
+}
+
+export interface AddSongResponse {
+  commitId: string;
+}

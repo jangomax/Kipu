@@ -11,6 +11,14 @@ export const apiClient: AxiosInstance = axios.create({
   },
 });
 
+apiClient.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export const spotifyApiClient: AxiosInstance = axios.create({
   baseURL: SPOTIFY_API_BASE_URL,
 });
@@ -23,12 +31,12 @@ spotifyApiClient.interceptors.request.use((config) => {
   return config;
 });
 
-export const get = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
+export const kipuGet = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   const response = await apiClient.get<T>(url, config);
   return response.data;
 };
 
-export const post = async <T>(
+export const kipuPost = async <T>(
   url: string,
   data?: unknown,
   config?: AxiosRequestConfig,

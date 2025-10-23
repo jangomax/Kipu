@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "@/handlers/auth";
+import playlistRoutes from "@/handlers/playlist";
 import dotenv from "dotenv";
 import { connectDb } from "./config/database";
 
@@ -22,6 +23,8 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+
 app.use("", authRoutes);
+app.use("", playlistRoutes);
 
 app.listen(3000, () => console.log("Server on http://localhost:3000"));
