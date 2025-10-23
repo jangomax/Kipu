@@ -23,12 +23,48 @@ export interface SpotifyPlaylistOwner {
   id: string;
   type: string;
   uri: string;
-  displayName: string;
+  displayName?: string;
+}
+
+export interface SpotifyPublicUser {
+  id: string;
+  displayName?: string;
+  href?: string;
+  type?: string;
+  uri?: string;
+  externalUrls?: SpotifyExternalUrls;
+  images?: SpotifyImage[];
 }
 
 export interface SpotifyPlaylistTracks {
   href: string;
   total: number;
+}
+
+export interface SpotifyArtist {
+  id: string;
+  name: string;
+  type: string;
+  uri: string;
+}
+
+export interface SpotifyAlbum {
+  id: string;
+  name: string;
+  images: SpotifyImage[];
+  releaseDate: string;
+  totalTracks: number;
+}
+
+export interface SpotifyTrack {
+  id: string;
+  name: string;
+  artists: SpotifyArtist[];
+  album: SpotifyAlbum;
+  durationMs?: number;
+  externalUrls: SpotifyExternalUrls;
+  previewUrl?: string;
+  uri: string;
 }
 
 export interface SpotifyPlaylist {
@@ -45,4 +81,9 @@ export interface SpotifyPlaylist {
   tracks: SpotifyPlaylistTracks;
   type: string;
   uri: string;
+}
+
+export interface SpotifyPlaylistTrackItem {
+  addedAt: string;
+  track: SpotifyTrack;
 }
