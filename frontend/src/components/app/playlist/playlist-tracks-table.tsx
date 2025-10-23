@@ -1,11 +1,4 @@
-import {
-  Anchor,
-  Image,
-  Paper,
-  Stack,
-  Table,
-  Text,
-} from '@mantine/core';
+import { Anchor, Image, Stack, Table, Text } from '@mantine/core';
 import type { SpotifyPlaylistTrackItem } from '@/types/spotify';
 
 const resolveDurationMs = (track: SpotifyPlaylistTrackItem['track']): number | undefined => {
@@ -19,7 +12,7 @@ const resolveDurationMs = (track: SpotifyPlaylistTrackItem['track']): number | u
 
   return undefined;
 };
-
+  
 const formatDuration = (durationMs?: number) => {
   if (!durationMs || Number.isNaN(durationMs)) {
     return '—';
@@ -40,9 +33,9 @@ export const PlaylistTracksTable = ({ items }: PlaylistTracksTableProps) => {
 
   if (validItems.length === 0) {
     return (
-      <Paper withBorder radius="md" p="xl">
-        <Text c="dimmed">This playlist does not have any tracks yet.</Text>
-      </Paper>
+      <Text c="dimmed" size="sm">
+        This playlist does not have any tracks yet.
+      </Text>
     );
   }
 
@@ -56,15 +49,14 @@ export const PlaylistTracksTable = ({ items }: PlaylistTracksTableProps) => {
       <Table.Tr key={`${track.id}-${item.addedAt}`}>
         <Table.Td width={70}>
           {trackImage ? (
-            <Image src={trackImage} alt={track.name} w={60} h={60} radius="sm" />
+            <Image src={trackImage} alt={track.name} w={50} h={50} radius="sm" />
           ) : (
-            <Paper
-              withBorder
-              shadow="xs"
-              radius="sm"
+            <div
               style={{
-                width: 60,
-                height: 60,
+                width: 50,
+                height: 50,
+                borderRadius: '8px',
+                border: '1px solid var(--mantine-color-dark-4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -73,7 +65,7 @@ export const PlaylistTracksTable = ({ items }: PlaylistTracksTableProps) => {
               <Text size="xs" c="dimmed">
                 No art
               </Text>
-            </Paper>
+            </div>
           )}
         </Table.Td>
         <Table.Td>
@@ -103,18 +95,22 @@ export const PlaylistTracksTable = ({ items }: PlaylistTracksTableProps) => {
   });
 
   return (
-    <Paper withBorder radius="md" shadow="xs">
-      <Table highlightOnHover verticalSpacing="md">
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Cover</Table.Th>
-            <Table.Th>Track</Table.Th>
-            <Table.Th>Album</Table.Th>
-            <Table.Th>Duration</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>{rows}</Table.Tbody>
-      </Table>
-    </Paper>
+    <Table highlightOnHover verticalSpacing="xs" withRowBorders={false}>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>Cover</Table.Th>
+          <Table.Th>Track</Table.Th>
+          <Table.Th>Album</Table.Th>
+          <Table.Th>Duration</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody
+        style={{
+          borderTop: '1px solid var(--mantine-color-gray-3)',
+        }}
+      >
+        {rows}
+      </Table.Tbody>
+    </Table>
   );
 };
