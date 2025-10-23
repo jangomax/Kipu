@@ -64,6 +64,7 @@ export interface SpotifyTrack {
   durationMs?: number;
   externalUrls: SpotifyExternalUrls;
   previewUrl?: string;
+  uri: string;
 }
 
 export interface SpotifyPlaylist {

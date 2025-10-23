@@ -17,46 +17,7 @@ import { IconArrowLeft } from '@tabler/icons-react';
 import { usePlaylists } from '@/hooks/usePlaylists';
 import { usePlaylistTracks } from '@/hooks/usePlaylistTracks';
 import { useSpotifyUserProfile } from '@/hooks/useSpotifyUserProfile';
-import type { SpotifyPlaylistTrackItem } from '@/types/spotify';
-
-const resolveDurationMs = (track: SpotifyPlaylistTrackItem['track']): number | undefined => {
-  if (!track) {
-    return undefined;
-  }
-
-  if (typeof track.durationMs === 'number') {
-    return track.durationMs;
-  }
-
-  const rawTrack = track as unknown as Record<string, unknown>;
-
-  const rawDuration = rawTrack['duration_ms'];
-  if (typeof rawDuration === 'number') {
-    return rawDuration;
-  }
-
-  const nestedDuration = rawTrack['duration'];
-  if (
-    nestedDuration &&
-    typeof nestedDuration === 'object' &&
-    typeof (nestedDuration as Record<string, unknown>)['ms'] === 'number'
-  ) {
-    return (nestedDuration as Record<string, number>)['ms'];
-  }
-
-  return undefined;
-};
-
-const formatDuration = (durationMs?: number) => {
-  if (!durationMs || Number.isNaN(durationMs)) {
-    return '—';
-  }
-
-  const totalSeconds = Math.floor(durationMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-};
+import { PlaylistTracksTable } from './playlist-tracks-table';
 
 export const PlaylistDetailPage = () => {
   const navigate = useNavigate();
@@ -132,8 +93,8 @@ export const PlaylistDetailPage = () => {
   const coverImage = playlist.images?.[0]?.url;
 
   return (
-    <Container size="lg" style={{ marginTop: '1rem' }}>
-      <Stack gap="xl">
+    <Container size="lg" style={{ marginTop: '1.25rem' }}>
+      <Stack gap="md">
         <Button
           variant="subtle"
           leftSection={<IconArrowLeft size={16} />}
@@ -183,76 +144,7 @@ export const PlaylistDetailPage = () => {
           </Stack>
         </Group>
 
-        <Stack gap="xs">
-          {playlistTracks?.items.map((item) => {
-            const track = item.track;
-
-            if (!track) {
-              return null;
-            }
-
-            const trackImage = track.album.images?.[0]?.url;
-            const artists = track.artists.map((artist) => artist.name).join(', ');
-            const durationMs = resolveDurationMs(track);
-
-            return (
-              <Paper key={track.id} withBorder shadow="xs" radius="md" p="md">
-                <Group wrap="nowrap" gap="md" align="flex-start">
-                  {trackImage ? (
-                    <Image src={trackImage} alt={track.name} w={70} h={70} radius="sm" />
-                  ) : (
-                    <Paper
-                      withBorder
-                      shadow="xs"
-                      radius="sm"
-                      style={{
-                        width: 70,
-                        height: 70,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text size="xs" c="dimmed">
-                        No art
-                      </Text>
-                    </Paper>
-                  )}
-                  <Stack gap={4} style={{ flex: 1 }}>
-                    <Text fw={600}>{track.name}</Text>
-                    <Text size="sm" c="dimmed">
-                      {artists}
-                    </Text>
-                    <Group justify="space-between" gap="xs">
-                      <Text size="sm" c="dimmed">
-                        {track.album.name}
-                      </Text>
-                      <Text size="sm" c="dimmed">
-                        {formatDuration(durationMs)}
-                      </Text>
-                    </Group>
-                    {track.externalUrls?.spotify && (
-                      <Anchor
-                        href={track.externalUrls.spotify}
-                        target="_blank"
-                        rel="noreferrer"
-                        size="sm"
-                      >
-                        Open in Spotify
-                      </Anchor>
-                    )}
-                  </Stack>
-                </Group>
-              </Paper>
-            );
-          })}
-
-          {playlistTracks && playlistTracks.items.length === 0 && (
-            <Paper withBorder radius="md" p="xl">
-              <Text c="dimmed">This playlist does not have any tracks yet.</Text>
-            </Paper>
-          )}
-        </Stack>
+        <PlaylistTracksTable items={playlistTracks?.items ?? []} />
       </Stack>
     </Container>
   );

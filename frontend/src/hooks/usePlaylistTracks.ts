@@ -19,7 +19,7 @@ export const usePlaylistTracks = (playlistId: string | undefined) => {
       }
 
       try {
-        return await spotifyGet<GetPlaylistTracksResponse>(`/playlists/${playlistId}/tracks`);
+        return spotifyGet<GetPlaylistTracksResponse>(`/playlists/${playlistId}/tracks`);
       } catch (error) {
         if (error instanceof AxiosError && error.response?.status === 401) {
           clearTokens();

@@ -39,7 +39,7 @@ export const post = async <T>(
 
 export const spotifyGet = async <T>(url: string, config?: AxiosRequestConfig): Promise<T> => {
   const response = await spotifyApiClient.get<T>(url, config);
-  return camelKeys(response.data, { recursive: true }) as T;
+  return camelKeys(response.data, { recursive: true, recursiveInArray: true }) as T;
 };
 
 export const queryClient = new QueryClient({
