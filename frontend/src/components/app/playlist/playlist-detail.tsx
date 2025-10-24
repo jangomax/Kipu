@@ -173,7 +173,7 @@ export const PlaylistDetailView = ({
           </Stack>
         </Group>
 
-        <PlaylistTracksTable items={playlistTracks?.items ?? []} />
+        <PlaylistTracksTable items={playlistTracks?.items ?? []} playlistId={playlistId} />
       </>
     );
   }
