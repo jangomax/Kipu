@@ -5,14 +5,20 @@ import { SpotifyPlaylist } from '@/types/spotify';
 
 interface PlaylistCardProps {
   playlist: SpotifyPlaylist;
+  onSelect?: (playlistId: string) => void;
+  isActive?: boolean;
 }
 
-export const PlaylistCard = ({ playlist }: PlaylistCardProps) => {
+export const PlaylistCard = ({ playlist, onSelect, isActive }: PlaylistCardProps) => {
   const coverImage = playlist.images?.[0]?.url;
   const navigate = useNavigate();
 
   const handleOpenPlaylist = () => {
-    navigate(`/app/playlists/${playlist.id}`);
+    if (onSelect) {
+      onSelect(playlist.id);
+    } else {
+      navigate(`/app/playlists/${playlist.id}`);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -27,7 +33,11 @@ export const PlaylistCard = ({ playlist }: PlaylistCardProps) => {
       shadow="sm"
       padding="sm"
       radius="md"
-      style={{ cursor: 'pointer' }}
+      style={{
+        cursor: 'pointer',
+        border: isActive ? '2px solid var(--mantine-color-blue-6)' : undefined,
+        boxShadow: isActive ? '0 0 0 1px var(--mantine-color-blue-6)' : undefined,
+      }}
       onClick={handleOpenPlaylist}
       onKeyDown={handleKeyDown}
       role="button"
