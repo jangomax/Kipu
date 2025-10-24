@@ -24,6 +24,8 @@ export const loginHandler = (req: Request, res: Response) => {
     "user-read-email",
     "user-read-private",
     "playlist-read-private",
+    "playlist-modify-public",
+    "playlist-modify-private",
   ].join(" ");
 
   const codeChallenge = generateCodeChallenge(code_verifier);
