@@ -2,6 +2,7 @@ import { Anchor, Image, Menu, Stack, Table, Text, ActionIcon, Loader } from '@ma
 import { IconDots, IconPlus, IconTrash, IconChevronRight } from '@tabler/icons-react';
 import type { SpotifyPlaylistTrackItem } from '@/types/spotify';
 import { useAddSong } from '@/hooks/useAddSong';
+import { useRemoveSong } from '@/hooks/useRemoveSong';
 import { useSpotifyUser } from '@/hooks/useSpotifyUser';
 import { usePlaylists } from '@/hooks/usePlaylists';
 
@@ -38,7 +39,8 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
   const track = item.track;
   const { data: user } = useSpotifyUser();
   const { data: playlistsData, isLoading: isLoadingPlaylists } = usePlaylists();
-  const { mutate: addSong, isPending } = useAddSong();
+  const { mutate: addSong, isPending: isAddPending } = useAddSong();
+  const { mutate: removeSong, isPending: isRemovePending } = useRemoveSong();
 
   if (!track) {
     return null;
@@ -62,10 +64,34 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
       },
       {
         onSuccess: (data) => {
-          console.log('Song added successfully! Snapshot:', data.commitId);
+          console.log('Song added successfully! Snapshot:', data.snapshotId);
         },
         onError: (error) => {
           console.error('Failed to add song:', error);
+        },
+      },
+    );
+  };
+
+  const handleRemoveSong = () => {
+    if (!user?.id) {
+      console.error('User ID not available');
+      return;
+    }
+
+    removeSong(
+      {
+        playlistId,
+        uris: [`spotify:track:${track.id}`],
+        userId: user.id,
+      },
+      {
+        onSuccess: (data) => {
+          console.log('Song removed successfully! Snapshot:', data.snapshotId, 'Commit:', data.commitId);
+          onRemoveSong?.();
+        },
+        onError: (error) => {
+          console.error('Failed to remove song:', error);
         },
       },
     );
@@ -131,7 +157,7 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
                 <Menu.Item
                   leftSection={<IconPlus size={16} />}
                   rightSection={<IconChevronRight size={16} />}
-                  disabled={isPending || !user?.id || isLoadingPlaylists}
+                  disabled={isAddPending || isRemovePending || !user?.id || isLoadingPlaylists}
                 >
                   {isLoadingPlaylists ? (
                     <>
@@ -152,7 +178,7 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
                   <Menu.Item
                     key={playlist.id}
                     onClick={() => handleAddSongToPlaylist(playlist.id)}
-                    disabled={isPending}
+                    disabled={isAddPending || isRemovePending}
                   >
                     {playlist.name}
                   </Menu.Item>
@@ -162,7 +188,12 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
                 )}
               </Menu.Dropdown>
             </Menu>
-            <Menu.Item leftSection={<IconTrash size={16} />} color="red" onClick={onRemoveSong}>
+            <Menu.Item
+              leftSection={<IconTrash size={16} />}
+              color="red"
+              onClick={handleRemoveSong}
+              disabled={isAddPending || isRemovePending || !user?.id}
+            >
               Remove from playlist
             </Menu.Item>
           </Menu.Dropdown>

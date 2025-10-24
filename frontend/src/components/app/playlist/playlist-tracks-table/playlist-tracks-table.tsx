@@ -22,7 +22,7 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
     <Table highlightOnHover verticalSpacing="xs" withRowBorders={false}>
       <Table.Thead>
         <Table.Tr>
-          <Table.Th>Cover</Table.Th>
+          <Table.Th></Table.Th>
           <Table.Th>Track</Table.Th>
           <Table.Th>Album</Table.Th>
           <Table.Th>Duration</Table.Th>
