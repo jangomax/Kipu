@@ -17,7 +17,7 @@ import { IconArrowLeft } from '@tabler/icons-react';
 import { usePlaylists } from '@/hooks/usePlaylists';
 import { usePlaylistTracks } from '@/hooks/usePlaylistTracks';
 import { useSpotifyUserProfile } from '@/hooks/useSpotifyUserProfile';
-import { PlaylistTracksTable } from './playlist-tracks-table';
+import { PlaylistTracksTable } from '@/components/app/playlist/playlist-tracks-table';
 import { PlaylistSidebarList } from './playlist-sidebar-list';
 
 interface PlaylistDetailViewProps {
