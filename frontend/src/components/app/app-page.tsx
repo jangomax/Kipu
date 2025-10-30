@@ -1,13 +1,28 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router';
-import { Container, Text, Loader, Stack, Alert, Title, SimpleGrid } from '@mantine/core';
+import { useNavigate, useSearchParams } from 'react-router';
+import {
+  Container,
+  Text,
+  Loader,
+  Stack,
+  Alert,
+  Title,
+  SimpleGrid,
+  Group,
+  Button,
+} from '@mantine/core';
+import { IconArrowLeft } from '@tabler/icons-react';
 import { useSpotifyUser } from '@/hooks/useSpotifyUser';
 import { usePlaylists } from '@/hooks/usePlaylists';
-import { PlaylistCard } from '@/components/app/playlist';
+import { PlaylistCard, PlaylistContent } from '@/components/app/playlist';
+import { PlaylistSidebarList } from '@/components/app/playlist/playlist-sidebar-list';
 import { getAccessToken } from '@/util/auth';
 
 export const AppPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const playlistId = searchParams.get('playlistId');
+
   const { data: user, isLoading: loadingUser, isError: userError } = useSpotifyUser();
   const { data: playlists, isLoading: loadingPlaylists } = usePlaylists();
 
@@ -48,14 +63,40 @@ export const AppPage = () => {
     );
   }
 
-  if (!user) {
+  if (!user || !accessToken) {
     return null;
   }
 
-  if (!accessToken) {
-    return null;
+  if (playlistId) {
+    return (
+      <Container size="xl" style={{ marginTop: '1.5rem', maxWidth: '100%' }}>
+        <Stack gap="md">
+          <Button
+            variant="subtle"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={() => setSearchParams({})}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            Back to Playlists
+          </Button>
+
+          <Group align="flex-start" gap="xl" wrap="nowrap" style={{ alignItems: 'stretch' }}>
+            <PlaylistSidebarList
+              playlists={playlists?.items ?? []}
+              currentId={playlistId}
+              onSelect={(id: string) => setSearchParams({ playlistId: id })}
+              loading={loadingPlaylists}
+              style={{ top: '80px' }}
+            />
+
+            <PlaylistContent playlistId={playlistId} />
+          </Group>
+        </Stack>
+      </Container>
+    );
   }
 
+  // Show playlist grid
   return (
     <Container size="xl">
       <Stack gap="md" style={{ marginTop: '2rem' }}>
@@ -63,7 +104,11 @@ export const AppPage = () => {
         {playlists && playlists.items.length > 0 ? (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 6 }} spacing="lg">
             {playlists.items.map((playlist) => (
-              <PlaylistCard key={playlist.id} playlist={playlist} />
+              <PlaylistCard
+                key={playlist.id}
+                playlist={playlist}
+                onSelect={(id: string) => setSearchParams({ playlistId: id })}
+              />
             ))}
           </SimpleGrid>
         ) : (
