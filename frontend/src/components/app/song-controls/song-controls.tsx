@@ -1,14 +1,14 @@
 import { ActionIcon, Loader, Menu } from '@mantine/core';
 import { IconChevronRight, IconDots, IconPlus, IconTrash } from '@tabler/icons-react';
-import type { SpotifyPlaylistTrackItem } from '@/types/spotify';
+import type { SpotifyTrack } from '@/types/spotify';
 import { useAddSong } from '@/hooks/useAddSong';
 import { useRemoveSong } from '@/hooks/useRemoveSong';
 import { usePlaylists } from '@/hooks/usePlaylists';
 import { useSpotifyUser } from '@/hooks/useSpotifyUser';
 
 export interface PlaylistSongControlsProps {
-  track: SpotifyPlaylistTrackItem['track'];
-  playlistId: string;
+  track: SpotifyTrack | null | undefined;
+  playlistId?: string;
   onRemoveSong?: () => void;
 }
 
@@ -21,6 +21,8 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
   if (!track) {
     return null;
   }
+
+  const canRemove = Boolean(playlistId);
 
   const handleAddSongToPlaylist = (targetPlaylistId: string) => {
     if (!user?.id) {
@@ -46,7 +48,7 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
   };
 
   const handleRemoveSong = () => {
-    if (!user?.id) {
+    if (!user?.id || !playlistId) {
       console.error('User ID not available');
       return;
     }
@@ -115,14 +117,16 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
             )}
           </Menu.Dropdown>
         </Menu>
-        <Menu.Item
-          leftSection={<IconTrash size={16} />}
-          color="red"
-          onClick={handleRemoveSong}
-          disabled={isAddPending || isRemovePending || !user?.id}
-        >
-          Remove from playlist
-        </Menu.Item>
+        {canRemove && (
+          <Menu.Item
+            leftSection={<IconTrash size={16} />}
+            color="red"
+            onClick={handleRemoveSong}
+            disabled={isAddPending || isRemovePending || !user?.id}
+          >
+            Remove from playlist
+          </Menu.Item>
+        )}
       </Menu.Dropdown>
     </Menu>
   );
