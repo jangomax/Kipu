@@ -4,6 +4,7 @@ import { Commit } from "@/models/db/commit";
 import { spotifyDelete } from "@/util/requestHelper";
 import { getAccessToken } from "@/util/getAccessToken";
 import { RemoveSongRequest, RemoveSongResponse } from "@/models/api/removeSong";
+import { maybeCreateSnapshot } from "@/util/snapshotHelper";
 
 export const removeSongHandler = async (req: Request, res: Response) => {
   try {
@@ -56,6 +57,8 @@ export const removeSongHandler = async (req: Request, res: Response) => {
     });
 
     await commit.save();
+
+    await maybeCreateSnapshot(playlistId, now);
 
     const response: RemoveSongResponse = {
       snapshotId: spotifyData.snapshot_id,

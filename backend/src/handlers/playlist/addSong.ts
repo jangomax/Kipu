@@ -4,6 +4,7 @@ import { AddSongRequest, AddSongResponse } from "@/models/api/addSong";
 import { Commit } from "@/models/db/commit";
 import { spotifyPost } from "@/util/requestHelper";
 import { getAccessToken } from "@/util/getAccessToken";
+import { maybeCreateSnapshot } from "@/util/snapshotHelper";
 
 export const addSongHandler = async (req: Request, res: Response) => {
   try {
@@ -60,6 +61,8 @@ export const addSongHandler = async (req: Request, res: Response) => {
     });
 
     await commit.save();
+
+    await maybeCreateSnapshot(playlistId, now);
 
     const response: AddSongResponse = {
       commitId: commitId,

@@ -7,16 +7,19 @@ const commitSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   parentId: String,
   diff: {
-    added: [
-      {
-        trackId: String,
-      },
-    ],
-    removed: [
-      {
-        trackId: String,
-      },
-    ],
+    required: true,
+    type: {
+      added: [
+        {
+          trackId: { type: String, required: true },
+        },
+      ],
+      removed: [
+        {
+          trackId: { type: String, required: true },
+        },
+      ],
+    },
   },
 });
 
