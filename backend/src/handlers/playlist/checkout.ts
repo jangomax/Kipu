@@ -4,7 +4,8 @@ import { Commit, Snapshot } from "@/models/db";
 
 export const checkoutHandler = async (req: Request, res: Response) => {
   try {
-    const { playlistId, commitId, latestCommitTime } = req.query;
+    const { commitId, latestCommitTime } = req.query;
+    const { playlistId } = req.params;
 
     if (!playlistId) {
       return res.status(400).json({ error: "playlistId is required" });
