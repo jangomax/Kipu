@@ -1,10 +1,6 @@
-import { Anchor, Image, Menu, Stack, Table, Text, ActionIcon, Loader } from '@mantine/core';
-import { IconDots, IconPlus, IconTrash, IconChevronRight } from '@tabler/icons-react';
+import { Anchor, Image, Stack, Table, Text } from '@mantine/core';
 import type { SpotifyPlaylistTrackItem } from '@/types/spotify';
-import { useAddSong } from '@/hooks/useAddSong';
-import { useRemoveSong } from '@/hooks/useRemoveSong';
-import { useSpotifyUser } from '@/hooks/useSpotifyUser';
-import { usePlaylists } from '@/hooks/usePlaylists';
+import { PlaylistSongControls } from '../../song-controls/song-controls';
 
 const resolveDurationMs = (track: SpotifyPlaylistTrackItem['track']): number | undefined => {
   if (!track) {
@@ -37,10 +33,6 @@ export interface PlaylistTrackRowProps {
 
 export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTrackRowProps) => {
   const track = item.track;
-  const { data: user } = useSpotifyUser();
-  const { data: playlistsData, isLoading: isLoadingPlaylists } = usePlaylists();
-  const { mutate: addSong, isPending: isAddPending } = useAddSong();
-  const { mutate: removeSong, isPending: isRemovePending } = useRemoveSong();
 
   if (!track) {
     return null;
@@ -49,53 +41,6 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
   const trackImage = track.album.images?.[0]?.url;
   const artists = track.artists.map((artist) => artist.name).join(', ');
   const durationMs = resolveDurationMs(track);
-
-  const handleAddSongToPlaylist = (targetPlaylistId: string) => {
-    if (!user?.id) {
-      console.error('User ID not available');
-      return;
-    }
-
-    addSong(
-      {
-        playlistId: targetPlaylistId,
-        uris: [`spotify:track:${track.id}`],
-        userId: user.id,
-      },
-      {
-        onSuccess: (data) => {
-          console.log('Song added successfully! Snapshot:', data.snapshotId);
-        },
-        onError: (error) => {
-          console.error('Failed to add song:', error);
-        },
-      },
-    );
-  };
-
-  const handleRemoveSong = () => {
-    if (!user?.id) {
-      console.error('User ID not available');
-      return;
-    }
-
-    removeSong(
-      {
-        playlistId,
-        uris: [`spotify:track:${track.id}`],
-        userId: user.id,
-      },
-      {
-        onSuccess: (data) => {
-          console.log('Song removed successfully! Snapshot:', data.snapshotId, 'Commit:', data.commitId);
-          onRemoveSong?.();
-        },
-        onError: (error) => {
-          console.error('Failed to remove song:', error);
-        },
-      },
-    );
-  };
 
   return (
     <Table.Tr key={`${track.id}-${item.addedAt}`}>
@@ -143,61 +88,7 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
         </Text>
       </Table.Td>
       <Table.Td width={60}>
-        <Menu shadow="md" width={200}>
-          <Menu.Target>
-            <ActionIcon variant="subtle" color="gray">
-              <IconDots size={18} />
-            </ActionIcon>
-          </Menu.Target>
-
-          <Menu.Dropdown>
-            <Menu.Label>Track Actions</Menu.Label>
-            <Menu trigger="hover" position="right-start" offset={2}>
-              <Menu.Target>
-                <Menu.Item
-                  leftSection={<IconPlus size={16} />}
-                  rightSection={<IconChevronRight size={16} />}
-                  disabled={isAddPending || isRemovePending || !user?.id || isLoadingPlaylists}
-                >
-                  {isLoadingPlaylists ? (
-                    <>
-                      <Loader size="xs" mr={8} /> Loading playlists...
-                    </>
-                  ) : (
-                    'Add to playlist'
-                  )}
-                </Menu.Item>
-              </Menu.Target>
-              <Menu.Dropdown
-                style={{
-                  maxHeight: '300px',
-                  overflowY: 'auto',
-                }}
-              >
-                {playlistsData?.items.map((playlist) => (
-                  <Menu.Item
-                    key={playlist.id}
-                    onClick={() => handleAddSongToPlaylist(playlist.id)}
-                    disabled={isAddPending || isRemovePending}
-                  >
-                    {playlist.name}
-                  </Menu.Item>
-                ))}
-                {(!playlistsData || playlistsData.items.length === 0) && (
-                  <Menu.Item disabled>No playlists available</Menu.Item>
-                )}
-              </Menu.Dropdown>
-            </Menu>
-            <Menu.Item
-              leftSection={<IconTrash size={16} />}
-              color="red"
-              onClick={handleRemoveSong}
-              disabled={isAddPending || isRemovePending || !user?.id}
-            >
-              Remove from playlist
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+        <PlaylistSongControls track={track} playlistId={playlistId} onRemoveSong={onRemoveSong} />
       </Table.Td>
     </Table.Tr>
   );
