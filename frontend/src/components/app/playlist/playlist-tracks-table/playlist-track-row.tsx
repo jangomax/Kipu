@@ -1,4 +1,4 @@
-import { Anchor, Image, Stack, Table, Text } from '@mantine/core';
+import { Image, Stack, Table, Text } from '@mantine/core';
 import type { SpotifyPlaylistTrackItem } from '@/types/spotify';
 import { PlaylistSongControls } from '../../song-controls/song-controls';
 
@@ -67,13 +67,7 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
       </Table.Td>
       <Table.Td>
         <Stack gap={4}>
-          {track.externalUrls?.spotify ? (
-            <Anchor href={track.externalUrls.spotify} target="_blank" rel="noreferrer">
-              {track.name}
-            </Anchor>
-          ) : (
-            <Text fw={600}>{track.name}</Text>
-          )}
+          <Text fw={600}>{track.name}</Text>
           <Text size="sm" c="dimmed">
             {artists}
           </Text>

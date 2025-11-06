@@ -120,7 +120,12 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
             By {ownerName}
           </Text>
           {playlist.externalUrls?.spotify && (
-            <Anchor href={playlist.externalUrls.spotify} target="_blank" rel="noreferrer">
+            <Anchor
+              href={playlist.externalUrls.spotify}
+              target="_blank"
+              rel="noreferrer"
+              w="fit-content"
+            >
               View on Spotify
             </Anchor>
           )}

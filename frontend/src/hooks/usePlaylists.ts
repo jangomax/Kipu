@@ -20,7 +20,6 @@ export const usePlaylists = () => {
         let offset = 0;
 
         while (nextUrl) {
-          console.log('hi');
           const response: GetPlaylistsResponse = await spotifyGet<GetPlaylistsResponse>(nextUrl);
           allPlaylists = [...allPlaylists, ...response.items];
 
