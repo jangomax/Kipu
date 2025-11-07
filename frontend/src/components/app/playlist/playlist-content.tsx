@@ -15,6 +15,7 @@ import { usePlaylists } from '@/hooks/usePlaylists';
 import { usePlaylistTracks } from '@/hooks/usePlaylistTracks';
 import { useSpotifyUserProfile } from '@/hooks/useSpotifyUserProfile';
 import { PlaylistTracksTable } from '@/components/app/playlist/playlist-tracks-table';
+import { CommitTimeline } from '@/components/app/playlist/playlist-commit-timeline';
 
 interface PlaylistContentProps {
   playlistId: string;
@@ -87,6 +88,80 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
 
   // Flatten all pages of tracks
   const allTracks = tracksPages?.pages.flatMap((page) => page.items) ?? [];
+
+  const sampleCommits = [
+    {
+      commitId: 'a1b2c3d4e5f6',
+      userId: 'user123',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 mins ago
+    },
+    {
+      commitId: 'b2c3d4e5f6g7',
+      userId: 'user456',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 3), // 3 hours ago
+    },
+    {
+      commitId: 'c3d4e5f6g7h8',
+      userId: 'user123',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5), // 5 hours ago
+    },
+    {
+      commitId: 'd4e5f6g7h8i9',
+      userId: 'user789',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24), // Yesterday
+    },
+    {
+      commitId: 'e5f6g7h8i9j0',
+      userId: 'user456',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 28), // Yesterday
+    },
+    {
+      commitId: 'f6g7h8i9j0k1',
+      userId: 'user234',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3), // 3 days ago
+    },
+    {
+      commitId: 'g7h8i9j0k1l2',
+      userId: 'user123',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4), // 4 days ago
+    },
+    {
+      commitId: 'h8i9j0k1l2m3',
+      userId: 'user789',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6), // 6 days ago
+    },
+    {
+      commitId: 'i9j0k1l2m3n4',
+      userId: 'user234',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15), // 15 days ago
+    },
+    {
+      commitId: 'j0k1l2m3n4o5',
+      userId: 'user456',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20), // 20 days ago
+    },
+    {
+      commitId: 'k1l2m3n4o5p6',
+      userId: 'user123',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 25), // 25 days ago
+    },
+    {
+      commitId: 'l2m3n4o5p6q7',
+      userId: 'user789',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 35), // 35 days ago
+    },
+    {
+      commitId: 'm3n4o5p6q7r8',
+      userId: 'user123',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60), // 60 days ago
+    },
+  ];
+
+  return (
+    <Stack gap="md" style={{ flex: 1, minWidth: 0 }}>
+      <CommitTimeline commits={sampleCommits} />
+    </Stack>
+  );
 
   return (
     <Stack gap="md" style={{ flex: 1, minWidth: 0 }}>
