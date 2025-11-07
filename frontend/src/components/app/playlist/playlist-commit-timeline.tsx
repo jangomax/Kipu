@@ -21,13 +21,7 @@ import {
   IconClock,
   IconCalendar,
 } from '@tabler/icons-react';
-
-// Types
-interface Commit {
-  commitId: string;
-  userId: string;
-  timestamp: Date;
-}
+import { Commit } from '@/types/commits';
 
 interface CommitGroup {
   label: string;
@@ -35,7 +29,6 @@ interface CommitGroup {
   commits: Commit[];
 }
 
-// Helper function to group commits by time period
 function groupCommitsByPeriod(commits: Commit[]): CommitGroup[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -73,10 +66,10 @@ function groupCommitsByPeriod(commits: Commit[]): CommitGroup[] {
   return groups.filter((group) => group.commits.length > 0);
 }
 
-// Helper function to format relative time
-function getRelativeTime(date: Date): string {
+function getRelativeTime(date: string): string {
+  const dateObj = new Date(date);
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
+  const diffMs = now.getTime() - dateObj.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
@@ -86,14 +79,13 @@ function getRelativeTime(date: Date): string {
   if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
   if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 
-  return date.toLocaleDateString('en-US', {
+  return dateObj.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+    year: dateObj.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
   });
 }
 
-// Individual commit item component
 interface CommitItemProps {
   commit: Commit;
   isSelected: boolean;
@@ -112,25 +104,20 @@ function CommitItem({ commit, isSelected, onSelect }: CommitItemProps) {
         backgroundColor: isSelected ? '#f0f7ff' : 'transparent',
         transition: 'all 0.2s ease',
       }}
-      sx={(theme) => ({
-        '&:hover': {
-          backgroundColor: isSelected ? '#f0f7ff' : theme.colors.gray[0],
-        },
-      })}
     >
-      <Group spacing="sm" noWrap>
+      <Group gap="sm" wrap="nowrap">
         <Avatar size="sm" radius="xl">
           {commit.userId.charAt(0).toUpperCase()}
         </Avatar>
 
         <Box style={{ flex: 1, minWidth: 0 }}>
-          <Group spacing="xs">
+          <Group gap="xs">
             <Code style={{ fontSize: '11px' }}>{commit.commitId}</Code>
-            <Text size="sm" color="dimmed">
+            <Text size="sm" c="dimmed">
               by {commit.userId}
             </Text>
           </Group>
-          <Text size="xs" color="dimmed" mt={4}>
+          <Text size="xs" c="dimmed" mt={4}>
             {getRelativeTime(commit.timestamp)}
           </Text>
         </Box>
@@ -139,7 +126,6 @@ function CommitItem({ commit, isSelected, onSelect }: CommitItemProps) {
   );
 }
 
-// Commit group component with expand/collapse
 interface CommitGroupProps {
   group: CommitGroup;
   selectedCommitId: string | null;
@@ -156,11 +142,11 @@ function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitG
         <HoverCard width={280} shadow="md" withArrow openDelay={300}>
           <HoverCard.Target>
             <UnstyledButton onClick={() => setIsExpanded(!isExpanded)} style={{ width: '100%' }}>
-              <Group spacing="sm">
+              <Group gap="sm">
                 <ActionIcon size="sm" variant="subtle">
                   {isExpanded ? <IconChevronDown size={16} /> : <IconChevronRight size={16} />}
                 </ActionIcon>
-                <Text weight={600} size="lg">
+                <Text fw={600} size="lg">
                   {group.label}
                 </Text>
                 <Badge size="lg" variant="filled" color="blue">
@@ -171,14 +157,14 @@ function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitG
           </HoverCard.Target>
 
           <HoverCard.Dropdown>
-            <Stack spacing="xs">
-              <Group spacing="xs">
+            <Stack gap="xs">
+              <Group gap="xs">
                 <IconCalendar size={16} />
-                <Text size="sm" weight={600}>
+                <Text size="sm" fw={600}>
                   {group.label}
                 </Text>
               </Group>
-              <Text size="xs" color="dimmed">
+              <Text size="xs" c="dimmed">
                 {group.commits.length} commit{group.commits.length !== 1 ? 's' : ''}
               </Text>
               <Box mt="xs">
@@ -188,12 +174,12 @@ function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitG
                   </Text>
                 ))}
                 {group.commits.length > 3 && (
-                  <Text size="xs" color="dimmed" italic>
+                  <Text size="xs" c="dimmed" fs="italic">
                     and {group.commits.length - 3} more...
                   </Text>
                 )}
               </Box>
-              <Text size="xs" color="dimmed" italic mt="xs">
+              <Text size="xs" c="dimmed" fs="italic" mt="xs">
                 Click to {isExpanded ? 'collapse' : 'expand'}
               </Text>
             </Stack>
@@ -202,7 +188,7 @@ function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitG
       }
     >
       <Collapse in={isExpanded}>
-        <Stack spacing="xs" mt="md" mb="xl">
+        <Stack gap="xs" mt="md" mb="xl">
           {group.commits.map((commit) => (
             <CommitItem
               key={commit.commitId}
@@ -217,7 +203,6 @@ function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitG
   );
 }
 
-// Main Timeline Component
 interface CommitTimelineProps {
   commits: Commit[];
   onCommitSelect?: (commit: Commit) => void;
@@ -241,9 +226,9 @@ export function CommitTimeline({
   if (commits.length === 0) {
     return (
       <Paper p="xl" withBorder>
-        <Stack align="center" spacing="md">
+        <Stack align="center" gap="md">
           <IconGitCommit size={48} color="gray" />
-          <Text color="dimmed">No commits found</Text>
+          <Text c="dimmed">No commits found</Text>
         </Stack>
       </Paper>
     );
@@ -251,9 +236,9 @@ export function CommitTimeline({
 
   return (
     <Paper p="md" withBorder>
-      <Group spacing="xs" mb="lg">
+      <Group gap="xs" mb="lg">
         <IconClock size={20} />
-        <Text size="xl" weight={700}>
+        <Text size="xl" fw={700}>
           Commit Timeline
         </Text>
         <Badge variant="light">{commits.length} total</Badge>
