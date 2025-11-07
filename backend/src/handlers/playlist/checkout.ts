@@ -75,12 +75,10 @@ export const checkoutHandler = async (req: Request, res: Response) => {
       tracks = tracks.filter((trackId) => !removedTracks.includes(trackId));
     });
 
-    const trackUris = tracks.map((trackId) => `spotify:track:${trackId}`);
-
     const response: CheckoutResponse = {
       playlistId: playlistId as string,
       commitId: targetCommit.commitId,
-      tracks: trackUris,
+      tracks: tracks,
       timestamp: targetCommit.timestamp.toISOString(),
     };
 
