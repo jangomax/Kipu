@@ -16,15 +16,24 @@ import { useSpotifyUser } from '@/hooks/useSpotifyUser';
 import { usePlaylists } from '@/hooks/usePlaylists';
 import { PlaylistCard, PlaylistContent } from '@/components/app/playlist';
 import { PlaylistSidebarList } from '@/components/app/playlist/playlist-sidebar-list';
+import { SongSearchResultsTable } from '@/components/app/song-search/song-search-results-table';
+import { useTrackSearch } from '@/hooks/useTrackSearch';
 import { getAccessToken } from '@/util/auth';
 
 export const AppPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const playlistId = searchParams.get('playlistId');
+  const queryParam = searchParams.get('query') ?? '';
+  const trimmedQuery = queryParam.trim();
 
   const { data: user, isLoading: loadingUser, isError: userError } = useSpotifyUser();
   const { data: playlists, isLoading: loadingPlaylists } = usePlaylists();
+  const {
+    data: trackSearch,
+    isLoading: isSearching,
+    isError: searchError,
+  } = useTrackSearch(trimmedQuery);
 
   useEffect(() => {
     if (!user && !loadingUser && userError) {
@@ -65,6 +74,53 @@ export const AppPage = () => {
 
   if (!user || !accessToken) {
     return null;
+  }
+
+  if (trimmedQuery) {
+    if (isSearching) {
+      return (
+        <Container size="sm" style={{ marginTop: '5rem' }}>
+          <Stack gap="lg" align="center">
+            <Loader size="xl" />
+            <Text size="lg">Searching for songs...</Text>
+          </Stack>
+        </Container>
+      );
+    }
+
+    if (searchError) {
+      return (
+        <Container size="sm" style={{ marginTop: '5rem' }}>
+          <Alert color="red" title="Error">
+            Failed to search songs. Please try again.
+          </Alert>
+        </Container>
+      );
+    }
+
+    const tracks = trackSearch?.items ?? [];
+
+    return (
+      <Container size="xl" style={{ marginTop: '1.5rem', maxWidth: '100%' }}>
+        <Stack gap="md">
+          <Button
+            variant="subtle"
+            leftSection={<IconArrowLeft size={16} />}
+            onClick={() => setSearchParams({})}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            Back to playlists
+          </Button>
+          <Stack gap="xs">
+            <Title order={3}>Results for &quot;{trimmedQuery}&quot;</Title>
+            <Text size="sm" c="dimmed">
+              {tracks.length} {tracks.length === 1 ? 'song found' : 'songs found'}
+            </Text>
+          </Stack>
+          <SongSearchResultsTable tracks={tracks} />
+        </Stack>
+      </Container>
+    );
   }
 
   if (playlistId) {

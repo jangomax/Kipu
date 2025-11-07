@@ -1,4 +1,4 @@
-import { SpotifyPlaylist, SpotifyPlaylistTrackItem } from './objects';
+import { SpotifyPlaylist, SpotifyPlaylistTrackItem, SpotifyTrack } from './objects';
 
 export interface GetPlaylistsResponse {
   href: string;
@@ -39,4 +39,16 @@ export interface RemoveSongRequest {
 export interface RemoveSongResponse {
   snapshotId: string;
   commitId: string;
+}
+
+export interface SearchTracksResponse {
+  tracks: {
+    href: string;
+    items: SpotifyTrack[];
+    limit: number;
+    next?: string;
+    offset: number;
+    previous?: string;
+    total: number;
+  };
 }
