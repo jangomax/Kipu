@@ -24,9 +24,10 @@ export const PlaylistSidebarList = ({
   const colorScheme = (theme as any).colorScheme === 'dark' ? 'dark' : 'light';
   const hoverBg = colorScheme === 'dark' ? theme.colors.dark[4] : theme.colors.gray[1];
   const activeBg = colorScheme === 'dark' ? 'rgba(51, 154, 240, 0.25)' : 'rgba(51, 154, 240, 0.12)';
-  const baseColor = colorScheme === 'dark' ? theme.colors.gray[4] : theme.colors.gray[7];
+  const baseColor = colorScheme === 'dark' ? theme.colors.gray[4] : theme.colors.gray[5];
   const hoverColor = colorScheme === 'dark' ? theme.colors.gray[2] : theme.colors.dark[7];
   const activeColor = colorScheme === 'dark' ? theme.colors.blue[2] : theme.colors.blue[7];
+
 
   return (
     <Stack
