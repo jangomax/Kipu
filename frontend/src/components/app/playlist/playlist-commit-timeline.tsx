@@ -5,23 +5,30 @@ import {
   Paper,
   Group,
   Badge,
-  Avatar,
   Stack,
   Box,
   Collapse,
   UnstyledButton,
   HoverCard,
   ActionIcon,
-  Code,
+  Button,
+  Tooltip,
+  Modal,
 } from '@mantine/core';
 import {
   IconGitCommit,
   IconChevronDown,
   IconChevronRight,
   IconClock,
-  IconCalendar,
+  IconBookmark,
+  IconBookmarkFilled,
 } from '@tabler/icons-react';
 import { Commit } from '@/types/commits';
+import { useKeepCommit } from '@/hooks/useKeepCommit';
+import { useUnkeepCommit } from '@/hooks/useUnkeepCommit';
+import { useKeptCommits } from '@/hooks/useKeptCommits';
+import { useSpotifyUser } from '@/hooks/useSpotifyUser';
+import { useSpotifySongs } from '@/hooks/useSpotifySongs';
 
 interface CommitGroup {
   label: string;
@@ -90,39 +97,123 @@ interface CommitItemProps {
   commit: Commit;
   isSelected: boolean;
   onSelect: (commit: Commit) => void;
+  isKept: boolean;
+  onKeep: (commit: Commit) => void;
+  onUnkeep: (commit: Commit, deletePlaylist: boolean) => void;
 }
 
-function CommitItem({ commit, isSelected, onSelect }: CommitItemProps) {
-  return (
-    <UnstyledButton
-      onClick={() => onSelect(commit)}
-      style={{
-        width: '100%',
-        padding: '12px',
-        borderRadius: '8px',
-        border: `2px solid ${isSelected ? '#228be6' : 'transparent'}`,
-        backgroundColor: isSelected ? '#f0f7ff' : 'transparent',
-        transition: 'all 0.2s ease',
-      }}
-    >
-      <Group gap="sm" wrap="nowrap">
-        <Avatar size="sm" radius="xl">
-          {commit.userId.charAt(0).toUpperCase()}
-        </Avatar>
+function CommitItem({ commit, isSelected, onSelect, isKept, onKeep, onUnkeep }: CommitItemProps) {
+  const [showUnkeepModal, setShowUnkeepModal] = useState(false);
 
-        <Box style={{ flex: 1, minWidth: 0 }}>
-          <Group gap="xs">
-            <Code style={{ fontSize: '11px' }}>{commit.commitId}</Code>
-            <Text size="sm" c="dimmed">
-              by {commit.userId}
-            </Text>
+  const addedTrackIds = commit.diff.added.map((t) => t.trackId);
+  const { data: tracksData } = useSpotifySongs(
+    addedTrackIds.length > 0 ? addedTrackIds : undefined,
+  );
+
+  const getChangeDescription = () => {
+    const addedCount = commit.diff.added.length;
+    const removedCount = commit.diff.removed.length;
+
+    if (addedCount > 0 && removedCount === 0) {
+      if (addedCount === 1 && tracksData?.tracks[0]) {
+        return `Added ${tracksData.tracks[0].artists[0].name} - "${tracksData.tracks[0].name}"`;
+      }
+      if (addedCount > 1 && tracksData?.tracks[0]) {
+        return `Added "${tracksData.tracks[0].name}" + ${addedCount - 1}`;
+      }
+      return `Added ${addedCount} ${addedCount === 1 ? 'song' : 'songs'}`;
+    }
+
+    if (removedCount > 0 && addedCount === 0) {
+      return `Removed ${removedCount} ${removedCount === 1 ? 'song' : 'songs'}`;
+    }
+
+    if (addedCount > 0 && removedCount > 0) {
+      return `Added ${addedCount}, removed ${removedCount}`;
+    }
+
+    return 'No changes';
+  };
+
+  return (
+    <>
+      <Box
+        style={{
+          width: '100%',
+          padding: '12px',
+          borderRadius: '8px',
+          border: `2px solid ${isSelected ? '#228be6' : 'transparent'}`,
+          backgroundColor: isSelected ? '#f0f7ff' : 'transparent',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <Group gap="sm" wrap="nowrap">
+          <UnstyledButton onClick={() => onSelect(commit)} style={{ flex: 1, minWidth: 0 }}>
+            <Group gap="sm" wrap="nowrap">
+              <Box style={{ flex: 1, minWidth: 0 }}>
+                <Group gap="xs">
+                  <Text size="sm">{commit.userId}</Text>
+                </Group>
+                <Text size="xs" c="dimmed" mt={2} lineClamp={1}>
+                  {getChangeDescription()}
+                </Text>
+                <Text size="xs" c="dimmed" mt={2}>
+                  {getRelativeTime(commit.timestamp)}
+                </Text>
+              </Box>
+            </Group>
+          </UnstyledButton>
+
+          <Tooltip label={isKept ? 'Kept' : 'Keep this commit'}>
+            <ActionIcon
+              variant={isKept ? 'filled' : 'subtle'}
+              color={isKept ? 'blue' : 'gray'}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isKept) {
+                  setShowUnkeepModal(true);
+                } else {
+                  onKeep(commit);
+                }
+              }}
+            >
+              {isKept ? <IconBookmarkFilled size={18} /> : <IconBookmark size={18} />}
+            </ActionIcon>
+          </Tooltip>
+        </Group>
+      </Box>
+
+      <Modal
+        opened={showUnkeepModal}
+        onClose={() => setShowUnkeepModal(false)}
+        title="Remove Keep"
+        centered
+      >
+        <Stack gap="md">
+          <Text>Do you want to delete the Spotify playlist as well?</Text>
+          <Group gap="sm">
+            <Button
+              variant="outline"
+              onClick={() => {
+                onUnkeep(commit, false);
+                setShowUnkeepModal(false);
+              }}
+            >
+              Keep Spotify Playlist
+            </Button>
+            <Button
+              color="red"
+              onClick={() => {
+                onUnkeep(commit, true);
+                setShowUnkeepModal(false);
+              }}
+            >
+              Delete Spotify Playlist
+            </Button>
           </Group>
-          <Text size="xs" c="dimmed" mt={4}>
-            {getRelativeTime(commit.timestamp)}
-          </Text>
-        </Box>
-      </Group>
-    </UnstyledButton>
+        </Stack>
+      </Modal>
+    </>
   );
 }
 
@@ -130,9 +221,19 @@ interface CommitGroupProps {
   group: CommitGroup;
   selectedCommitId: string | null;
   onSelectCommit: (commit: Commit) => void;
+  keptCommitIds: Set<string>;
+  onKeep: (commit: Commit) => void;
+  onUnkeep: (commit: Commit, deletePlaylist: boolean) => void;
 }
 
-function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitGroupProps) {
+function CommitGroupSection({
+  group,
+  selectedCommitId,
+  onSelectCommit,
+  keptCommitIds,
+  onKeep,
+  onUnkeep,
+}: CommitGroupProps) {
   const [isExpanded, setIsExpanded] = useState(group.period === 'today');
 
   return (
@@ -155,35 +256,6 @@ function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitG
               </Group>
             </UnstyledButton>
           </HoverCard.Target>
-
-          <HoverCard.Dropdown>
-            <Stack gap="xs">
-              <Group gap="xs">
-                <IconCalendar size={16} />
-                <Text size="sm" fw={600}>
-                  {group.label}
-                </Text>
-              </Group>
-              <Text size="xs" c="dimmed">
-                {group.commits.length} commit{group.commits.length !== 1 ? 's' : ''}
-              </Text>
-              <Box mt="xs">
-                {group.commits.slice(0, 3).map((commit) => (
-                  <Text key={commit.commitId} size="xs" lineClamp={1} mb={4}>
-                    • {commit.commitId} by {commit.userId}
-                  </Text>
-                ))}
-                {group.commits.length > 3 && (
-                  <Text size="xs" c="dimmed" fs="italic">
-                    and {group.commits.length - 3} more...
-                  </Text>
-                )}
-              </Box>
-              <Text size="xs" c="dimmed" fs="italic" mt="xs">
-                Click to {isExpanded ? 'collapse' : 'expand'}
-              </Text>
-            </Stack>
-          </HoverCard.Dropdown>
         </HoverCard>
       }
     >
@@ -195,6 +267,9 @@ function CommitGroupSection({ group, selectedCommitId, onSelectCommit }: CommitG
               commit={commit}
               isSelected={selectedCommitId === commit.commitId}
               onSelect={onSelectCommit}
+              isKept={keptCommitIds.has(commit.commitId)}
+              onKeep={onKeep}
+              onUnkeep={onUnkeep}
             />
           ))}
         </Stack>
@@ -207,18 +282,47 @@ interface CommitTimelineProps {
   commits: Commit[];
   onCommitSelect?: (commit: Commit) => void;
   selectedCommitId?: string | null;
+  playlistId: string;
 }
 
 export function CommitTimeline({
   commits,
   onCommitSelect,
   selectedCommitId = null,
+  playlistId,
 }: CommitTimelineProps) {
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(selectedCommitId);
+  const { data: user } = useSpotifyUser();
+  const userId = user?.id;
+
+  const { data: keptCommitsData } = useKeptCommits(userId, playlistId);
+  const keptCommitIds = new Set(keptCommitsData?.keptCommits.map((kc) => kc.commitId) || []);
+
+  const keepMutation = useKeepCommit();
+  const unkeepMutation = useUnkeepCommit();
 
   const handleCommitSelect = (commit: Commit) => {
     setLocalSelectedId(commit.commitId);
     onCommitSelect?.(commit);
+  };
+
+  const handleKeep = (commit: Commit) => {
+    if (!userId) return;
+    keepMutation.mutate({
+      playlistId,
+      commitId: commit.commitId,
+      userId,
+    });
+  };
+
+  const handleUnkeep = (commit: Commit, deletePlaylist: boolean) => {
+    if (!userId) return;
+    unkeepMutation.mutate({
+      playlistId,
+      commitId: commit.commitId,
+      userId,
+      deleteSpotifyPlaylist: deletePlaylist,
+    });
   };
 
   const groupedCommits = groupCommitsByPeriod(commits);
@@ -251,6 +355,9 @@ export function CommitTimeline({
             group={group}
             selectedCommitId={localSelectedId}
             onSelectCommit={handleCommitSelect}
+            keptCommitIds={keptCommitIds}
+            onKeep={handleKeep}
+            onUnkeep={handleUnkeep}
           />
         ))}
       </Timeline>
