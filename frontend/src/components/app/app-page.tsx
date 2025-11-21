@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   Container,
@@ -18,6 +18,7 @@ import { PlaylistCard, PlaylistContent } from '@/components/app/playlist';
 import { PlaylistSidebarList } from '@/components/app/playlist/playlist-sidebar-list';
 import { SongSearchResultsTable } from '@/components/app/song-search/song-search-results-table';
 import { useTrackSearch } from '@/hooks/useTrackSearch';
+import { useKeptCommits } from '@/hooks/useKeptCommits';
 import { getAccessToken } from '@/util/auth';
 
 export const AppPage = () => {
@@ -34,6 +35,18 @@ export const AppPage = () => {
     isLoading: isSearching,
     isError: searchError,
   } = useTrackSearch(trimmedQuery);
+
+  const { data: keptCommitsData } = useKeptCommits(user?.id);
+  const keptPlaylistIds = useMemo(
+    () => new Set(keptCommitsData?.keptCommits.map((kc) => kc.spotifyPlaylistId) || []),
+    [keptCommitsData],
+  );
+
+  // filter out playlists that are kept commits
+  const filteredPlaylists = useMemo(
+    () => playlists?.items.filter((playlist) => !keptPlaylistIds.has(playlist.id)) || [],
+    [playlists, keptPlaylistIds],
+  );
 
   useEffect(() => {
     if (!user && !loadingUser && userError) {
@@ -138,7 +151,7 @@ export const AppPage = () => {
 
           <Group align="flex-start" gap="xl" wrap="nowrap" style={{ alignItems: 'stretch' }}>
             <PlaylistSidebarList
-              playlists={playlists?.items ?? []}
+              playlists={filteredPlaylists}
               currentId={playlistId}
               onSelect={(id: string) => setSearchParams({ playlistId: id })}
               loading={loadingPlaylists}
@@ -157,9 +170,9 @@ export const AppPage = () => {
     <Container size="xl">
       <Stack gap="md" style={{ marginTop: '2rem' }}>
         <Title order={3}>Your Playlists</Title>
-        {playlists && playlists.items.length > 0 ? (
+        {filteredPlaylists.length > 0 ? (
           <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 6 }} spacing="lg">
-            {playlists.items.map((playlist) => (
+            {filteredPlaylists.map((playlist) => (
               <PlaylistCard
                 key={playlist.id}
                 playlist={playlist}

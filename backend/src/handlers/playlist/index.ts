@@ -3,5 +3,8 @@ export * from "./removeSong";
 export * from "./checkout";
 export * from "./getCommits";
 export * from "./commit";
+export * from "./keepCommit";
+export * from "./unkeepCommit";
+export * from "./getKeptCommits";
 
 export { default } from "./router";

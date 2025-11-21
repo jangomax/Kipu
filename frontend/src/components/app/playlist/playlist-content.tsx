@@ -319,7 +319,11 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
         title="Playlist History"
         padding="md"
       >
-        <CommitTimeline commits={commits} onCommitSelect={handleCommitSelect} />
+        <CommitTimeline
+          commits={commits}
+          onCommitSelect={handleCommitSelect}
+          playlistId={playlistId}
+        />
       </Drawer>
 
       <Stack gap="md" style={{ flex: 1, minWidth: 0 }}>
