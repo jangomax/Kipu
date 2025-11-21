@@ -12,7 +12,7 @@ export const getCommitsHandler = async (req: Request, res: Response) => {
 
     const commits = await Commit.find({ playlistId })
       .sort({ timestamp: -1 })
-      .select("commitId timestamp userId parentId");
+      .select("commitId timestamp userId parentId diff");
 
     const response: GetCommitsResponse = {
       playlistId,
@@ -21,6 +21,7 @@ export const getCommitsHandler = async (req: Request, res: Response) => {
         timestamp: commit.timestamp,
         userId: commit.userId,
         parentId: commit.parentId ?? undefined,
+        diff: commit.diff,
       })),
     };
 
