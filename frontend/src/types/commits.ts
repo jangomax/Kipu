@@ -5,6 +5,16 @@ export interface Commit {
   parentId?: string;
 }
 
+export interface CommitRequest {
+  userId: string;
+  addedUris: string[];
+  removedUris: string[];
+}
+
+export interface CommitResponse {
+  commitId: string;
+}
+
 export interface GetCommitsResponse {
   playlistId: string;
   commits: Commit[];

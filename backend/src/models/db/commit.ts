@@ -6,6 +6,7 @@ const commitSchema = new mongoose.Schema({
   playlistId: { type: String, required: true, index: true },
   userId: { type: String, required: true },
   parentId: String,
+  snapshotId: String,
   diff: {
     required: true,
     type: {

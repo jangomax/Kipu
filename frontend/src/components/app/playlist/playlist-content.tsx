@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Alert,
   Anchor,
@@ -7,6 +7,7 @@ import {
   Group,
   Image,
   Loader,
+  Modal,
   Paper,
   Stack,
   Text,
@@ -19,6 +20,8 @@ import { useSpotifyUserProfile } from '@/hooks/useSpotifyUserProfile';
 import { useCommits } from '@/hooks/useCommits';
 import { useCheckout } from '@/hooks/useCheckout';
 import { useSpotifySongs } from '@/hooks/useSpotifySongs';
+import { useSpotifyUser } from '@/hooks/useSpotifyUser';
+import { useCommit } from '@/hooks/useCommit';
 import { PlaylistTracksTable } from '@/components/app/playlist/playlist-tracks-table';
 import { CommitTimeline } from '@/components/app/playlist/playlist-commit-timeline';
 import { Commit } from '@/types/commits';
@@ -29,11 +32,23 @@ interface PlaylistContentProps {
   playlistId: string;
 }
 
+interface PendingDiff {
+  addedTrackIds: string[];
+  removedTrackIds: string[];
+}
+
 export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   const [drawerOpened, setDrawerOpened] = useState(false);
   const [checkoutData, setCheckoutData] = useState<CheckoutResponse | null>(null);
+  const [pendingDiff, setPendingDiff] = useState<PendingDiff | null>(null);
+  const [showCommitDialog, setShowCommitDialog] = useState(false);
+  const [hasCheckedForChanges, setHasCheckedForChanges] = useState(false);
+  const [isCheckingDiff, setIsCheckingDiff] = useState(false);
 
-  const { mutate: checkout, isPending: isCheckingOut } = useCheckout();
+  const { data: user } = useSpotifyUser();
+  const { mutate: checkout } = useCheckout();
+  const { mutate: fetchLatestCommit } = useCheckout();
+  const { mutate: commitChanges, isPending: isRecordingCommit } = useCommit();
 
   const {
     data: playlists,
@@ -55,6 +70,34 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   const { data: checkoutTracksData, isLoading: isLoadingCheckoutTracks } = useSpotifySongs(
     checkoutData?.tracks,
   );
+  const { data: removedTrackDetails, isLoading: isLoadingRemovedDetails } = useSpotifySongs(
+    pendingDiff?.removedTrackIds && pendingDiff.removedTrackIds.length > 0
+      ? pendingDiff.removedTrackIds
+      : undefined,
+  );
+
+  const allTracks = tracksPages?.pages.flatMap((page) => page.items) ?? [];
+  const commits = commitsData?.commits ?? [];
+
+  const currentTrackIds = useMemo(() => {
+    const ids: string[] = [];
+    allTracks.forEach((item) => {
+      if (item.track?.id) {
+        ids.push(item.track.id);
+      }
+    });
+    return ids;
+  }, [allTracks]);
+
+  const currentTrackMap = useMemo(() => {
+    const map = new Map<string, SpotifyPlaylistTrackItem['track']>();
+    allTracks.forEach((item) => {
+      if (item.track?.id) {
+        map.set(item.track.id, item.track);
+      }
+    });
+    return map;
+  }, [allTracks]);
 
   const playlist = useMemo(
     () => playlists?.items.find((item) => item.id === playlistId),
@@ -67,6 +110,186 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     shouldFetchOwnerProfile ? playlist?.owner?.id : undefined,
   );
   const ownerName = playlist?.owner.displayName || ownerProfile?.displayName || 'Unknown creator';
+
+  const trackInfoMap = useMemo(() => {
+    const map = new Map(currentTrackMap);
+    removedTrackDetails?.tracks?.forEach((track) => {
+      map.set(track.id, track);
+    });
+    return map;
+  }, [currentTrackMap, removedTrackDetails]);
+
+  const buildCountMap = useCallback((ids: string[]) => {
+    const counts = new Map<string, number>();
+    ids.forEach((id) => counts.set(id, (counts.get(id) || 0) + 1));
+    return counts;
+  }, []);
+
+  const computeDiff = useCallback(
+    (current: string[], baseline: string[]): PendingDiff => {
+      const currentCounts = buildCountMap(current);
+      const baselineCounts = buildCountMap(baseline);
+
+      const addedTrackIds: string[] = [];
+      const removedTrackIds: string[] = [];
+
+      currentCounts.forEach((count, id) => {
+        const delta = count - (baselineCounts.get(id) || 0);
+        if (delta > 0) {
+          for (let i = 0; i < delta; i += 1) {
+            addedTrackIds.push(id);
+          }
+        }
+      });
+
+      baselineCounts.forEach((count, id) => {
+        const delta = count - (currentCounts.get(id) || 0);
+        if (delta > 0) {
+          for (let i = 0; i < delta; i += 1) {
+            removedTrackIds.push(id);
+          }
+        }
+      });
+
+      return { addedTrackIds, removedTrackIds };
+    },
+    [buildCountMap],
+  );
+
+  useEffect(() => {
+    setHasCheckedForChanges(false);
+    setPendingDiff(null);
+    setShowCommitDialog(false);
+  }, [playlistId]);
+
+  useEffect(() => {
+    if (checkoutData) {
+      console.log('Commit check skipped: viewing historical checkout');
+      return; // don't prompt while browsing history
+    }
+    if (hasCheckedForChanges) {
+      console.log('Commit check skipped: already checked for changes');
+      return;
+    }
+    if (isCheckingDiff) {
+      console.log('Commit check skipped: already checking');
+      return;
+    }
+    if (!playlistId) {
+      console.log('Commit check skipped: missing playlistId');
+      return;
+    }
+    if (isLoadingTracks) {
+      console.log('Commit check waiting: tracks still loading');
+      return;
+    }
+    if (!commits.length) {
+      console.log('Commit check skipped: no commits found');
+      setHasCheckedForChanges(true);
+      return;
+    }
+
+    const latestCommitId = commits[0]?.commitId;
+    if (!latestCommitId) {
+      console.log('Commit check skipped: latest commit is missing an id');
+      setHasCheckedForChanges(true);
+      return;
+    }
+
+    console.log('Commit check starting', {
+      latestCommitId,
+      currentTrackIds,
+    });
+
+    setIsCheckingDiff(true);
+
+    fetchLatestCommit(
+      { playlistId, commitId: latestCommitId },
+      {
+        onSuccess: (data) => {
+          const baselineTrackIds = data.tracks || [];
+          const diff = computeDiff(currentTrackIds, baselineTrackIds);
+          console.log('Commit check', {
+            latestCommitId,
+            baselineTrackIds,
+            currentTrackIds,
+            added: diff.addedTrackIds,
+            removed: diff.removedTrackIds,
+          });
+          if (diff.addedTrackIds.length || diff.removedTrackIds.length) {
+            setPendingDiff(diff);
+            setShowCommitDialog(true);
+          }
+          setHasCheckedForChanges(true);
+          setIsCheckingDiff(false);
+        },
+        onError: (error) => {
+          console.error('Commit check failed', error);
+          setHasCheckedForChanges(true);
+          setIsCheckingDiff(false);
+        },
+      },
+    );
+  }, [
+    checkoutData,
+    hasCheckedForChanges,
+    playlistId,
+    commits,
+    fetchLatestCommit,
+    computeDiff,
+    currentTrackIds,
+    isLoadingTracks,
+  ]);
+
+  const summarizeDiff = useCallback(
+    (ids: string[]) => {
+      const counts = buildCountMap(ids);
+      return Array.from(counts.entries()).map(([trackId, count]) => {
+        const info = trackInfoMap.get(trackId);
+        const artists = info?.artists?.map((artist) => artist.name).join(', ');
+        const label = info?.name ? `${info.name}${artists ? ` — ${artists}` : ''}` : trackId;
+        return { trackId, count, label };
+      });
+    },
+    [buildCountMap, trackInfoMap],
+  );
+
+  const addedSummary = useMemo(
+    () => summarizeDiff(pendingDiff?.addedTrackIds ?? []),
+    [pendingDiff?.addedTrackIds, summarizeDiff],
+  );
+
+  const removedSummary = useMemo(
+    () => summarizeDiff(pendingDiff?.removedTrackIds ?? []),
+    [pendingDiff?.removedTrackIds, summarizeDiff],
+  );
+
+  const handleCommitChanges = useCallback(async () => {
+    if (!pendingDiff || !user?.id) {
+      console.error('Missing data to commit changes');
+      return;
+    }
+
+    const toUri = (trackId: string) => `spotify:track:${trackId}`;
+
+    commitChanges(
+      {
+        playlistId,
+        userId: user.id,
+        addedUris: pendingDiff.addedTrackIds.map(toUri),
+        removedUris: pendingDiff.removedTrackIds.map(toUri),
+      },
+      {
+        onSuccess: () => {
+          setShowCommitDialog(false);
+          setPendingDiff(null);
+        },
+        onError: (error) => {
+          console.error('Failed to record commit', error);
+        },
+      },
+    );
+  }, [commitChanges, pendingDiff, playlistId, user?.id]);
 
   const handleCommitSelect = useCallback(
     (commit: Commit) => {
@@ -138,12 +361,78 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     );
   }
 
-  const allTracks = tracksPages?.pages.flatMap((page) => page.items) ?? [];
-  const commits = commitsData?.commits ?? [];
   const displayTracks = checkoutData ? checkoutTracks : allTracks;
 
   return (
     <>
+      <Modal
+        opened={showCommitDialog}
+        onClose={() => setShowCommitDialog(false)}
+        title="Uncommitted changes"
+        centered
+      >
+        <Stack gap="sm">
+          <Text size="sm">
+            We spotted changes to this playlist since the last commit. Would you like to record
+            them?
+          </Text>
+
+          <Stack gap={6}>
+            <Text fw={600} size="sm">
+              Added
+            </Text>
+            {addedSummary.length === 0 ? (
+              <Text size="sm" c="dimmed">
+                No additions
+              </Text>
+            ) : (
+              addedSummary.map((item) => (
+                <Text key={`added-${item.trackId}`} size="sm">
+                  {item.label} {item.count > 1 ? `×${item.count}` : ''}
+                </Text>
+              ))
+            )}
+          </Stack>
+
+          <Stack gap={6}>
+            <Text fw={600} size="sm">
+              Removed
+            </Text>
+            {isLoadingRemovedDetails && removedSummary.length > 0 ? (
+              <Group gap="xs">
+                <Loader size="xs" />
+                <Text size="sm" c="dimmed">
+                  Loading removed track details...
+                </Text>
+              </Group>
+            ) : removedSummary.length === 0 ? (
+              <Text size="sm" c="dimmed">
+                No removals
+              </Text>
+            ) : (
+              removedSummary.map((item) => (
+                <Text key={`removed-${item.trackId}`} size="sm">
+                  {item.label} {item.count > 1 ? `×${item.count}` : ''}
+                </Text>
+              ))
+            )}
+          </Stack>
+
+          <Group justify="flex-end" mt="xs">
+            <Button
+              variant="default"
+              onClick={() => setShowCommitDialog(false)}
+              disabled={isRecordingCommit}
+            >
+              Not now
+            </Button>
+            <Button onClick={handleCommitChanges} loading={isRecordingCommit}>
+              Commit changes
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
       <Drawer
         opened={drawerOpened}
         onClose={() => setDrawerOpened(false)}
