@@ -7,7 +7,6 @@ import {
   Group,
   Image,
   Loader,
-  Modal,
   Paper,
   Stack,
   Text,
@@ -24,17 +23,14 @@ import { useSpotifyUser } from '@/hooks/useSpotifyUser';
 import { useCommit } from '@/hooks/useCommit';
 import { PlaylistTracksTable } from '@/components/app/playlist/playlist-tracks-table';
 import { CommitTimeline } from '@/components/app/playlist/playlist-commit-timeline';
+import { UncommittedChangesModal } from '@/components/app/playlist/uncommitted-changes-modal';
 import { Commit } from '@/types/commits';
 import { CheckoutResponse } from '@/types/checkout';
 import { SpotifyPlaylistTrackItem } from '@/types/spotify';
+import { PendingDiff, computeDiff } from '@/util/playlistDiff';
 
 interface PlaylistContentProps {
   playlistId: string;
-}
-
-interface PendingDiff {
-  addedTrackIds: string[];
-  removedTrackIds: string[];
 }
 
 export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
@@ -118,43 +114,6 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     });
     return map;
   }, [currentTrackMap, removedTrackDetails]);
-
-  const buildCountMap = useCallback((ids: string[]) => {
-    const counts = new Map<string, number>();
-    ids.forEach((id) => counts.set(id, (counts.get(id) || 0) + 1));
-    return counts;
-  }, []);
-
-  const computeDiff = useCallback(
-    (current: string[], baseline: string[]): PendingDiff => {
-      const currentCounts = buildCountMap(current);
-      const baselineCounts = buildCountMap(baseline);
-
-      const addedTrackIds: string[] = [];
-      const removedTrackIds: string[] = [];
-
-      currentCounts.forEach((count, id) => {
-        const delta = count - (baselineCounts.get(id) || 0);
-        if (delta > 0) {
-          for (let i = 0; i < delta; i += 1) {
-            addedTrackIds.push(id);
-          }
-        }
-      });
-
-      baselineCounts.forEach((count, id) => {
-        const delta = count - (currentCounts.get(id) || 0);
-        if (delta > 0) {
-          for (let i = 0; i < delta; i += 1) {
-            removedTrackIds.push(id);
-          }
-        }
-      });
-
-      return { addedTrackIds, removedTrackIds };
-    },
-    [buildCountMap],
-  );
 
   useEffect(() => {
     setHasCheckedForChanges(false);
@@ -240,29 +199,6 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     currentTrackIds,
     isLoadingTracks,
   ]);
-
-  const summarizeDiff = useCallback(
-    (ids: string[]) => {
-      const counts = buildCountMap(ids);
-      return Array.from(counts.entries()).map(([trackId, count]) => {
-        const info = trackInfoMap.get(trackId);
-        const artists = info?.artists?.map((artist) => artist.name).join(', ');
-        const label = info?.name ? `${info.name}${artists ? ` — ${artists}` : ''}` : trackId;
-        return { trackId, count, label };
-      });
-    },
-    [buildCountMap, trackInfoMap],
-  );
-
-  const addedSummary = useMemo(
-    () => summarizeDiff(pendingDiff?.addedTrackIds ?? []),
-    [pendingDiff?.addedTrackIds, summarizeDiff],
-  );
-
-  const removedSummary = useMemo(
-    () => summarizeDiff(pendingDiff?.removedTrackIds ?? []),
-    [pendingDiff?.removedTrackIds, summarizeDiff],
-  );
 
   const handleCommitChanges = useCallback(async () => {
     if (!pendingDiff || !user?.id) {
@@ -365,73 +301,15 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
 
   return (
     <>
-      <Modal
+      <UncommittedChangesModal
         opened={showCommitDialog}
+        pendingDiff={pendingDiff}
+        trackInfoMap={trackInfoMap}
+        isLoadingRemovedDetails={isLoadingRemovedDetails}
         onClose={() => setShowCommitDialog(false)}
-        title="Uncommitted changes"
-        centered
-      >
-        <Stack gap="sm">
-          <Text size="sm">
-            We spotted changes to this playlist since the last commit. Would you like to record
-            them?
-          </Text>
-
-          <Stack gap={6}>
-            <Text fw={600} size="sm">
-              Added
-            </Text>
-            {addedSummary.length === 0 ? (
-              <Text size="sm" c="dimmed">
-                No additions
-              </Text>
-            ) : (
-              addedSummary.map((item) => (
-                <Text key={`added-${item.trackId}`} size="sm">
-                  {item.label} {item.count > 1 ? `×${item.count}` : ''}
-                </Text>
-              ))
-            )}
-          </Stack>
-
-          <Stack gap={6}>
-            <Text fw={600} size="sm">
-              Removed
-            </Text>
-            {isLoadingRemovedDetails && removedSummary.length > 0 ? (
-              <Group gap="xs">
-                <Loader size="xs" />
-                <Text size="sm" c="dimmed">
-                  Loading removed track details...
-                </Text>
-              </Group>
-            ) : removedSummary.length === 0 ? (
-              <Text size="sm" c="dimmed">
-                No removals
-              </Text>
-            ) : (
-              removedSummary.map((item) => (
-                <Text key={`removed-${item.trackId}`} size="sm">
-                  {item.label} {item.count > 1 ? `×${item.count}` : ''}
-                </Text>
-              ))
-            )}
-          </Stack>
-
-          <Group justify="flex-end" mt="xs">
-            <Button
-              variant="default"
-              onClick={() => setShowCommitDialog(false)}
-              disabled={isRecordingCommit}
-            >
-              Not now
-            </Button>
-            <Button onClick={handleCommitChanges} loading={isRecordingCommit}>
-              Commit changes
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
+        onCommit={handleCommitChanges}
+        isCommitPending={isRecordingCommit}
+      />
 
       <Drawer
         opened={drawerOpened}
