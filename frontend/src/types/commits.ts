@@ -11,6 +11,16 @@ export interface Commit {
   diff: CommitDiff;
 }
 
+export interface CommitRequest {
+  userId: string;
+  addedUris: string[];
+  removedUris: string[];
+}
+
+export interface CommitResponse {
+  commitId: string;
+}
+
 export interface GetCommitsResponse {
   playlistId: string;
   commits: Commit[];
