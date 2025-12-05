@@ -40,11 +40,12 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   const [showCommitDialog, setShowCommitDialog] = useState(false);
   const [hasCheckedForChanges, setHasCheckedForChanges] = useState(false);
   const [isCheckingDiff, setIsCheckingDiff] = useState(false);
+  const [, setIsSyncingDiff] = useState(false);
 
   const { data: user } = useSpotifyUser();
   const { mutate: checkout } = useCheckout();
   const { mutate: fetchLatestCommit } = useCheckout();
-  const { mutate: commitChanges, isPending: isRecordingCommit } = useCommit();
+  const { mutate: commitChanges } = useCommit();
 
   const {
     data: playlists,
@@ -177,7 +178,28 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
           });
           if (diff.addedTrackIds.length || diff.removedTrackIds.length) {
             setPendingDiff(diff);
-            setShowCommitDialog(true);
+            if (user?.id) {
+              const toUri = (trackId: string) => `spotify:track:${trackId}`;
+              setIsSyncingDiff(true);
+              commitChanges(
+                {
+                  playlistId,
+                  userId: user.id,
+                  addedUris: diff.addedTrackIds.map(toUri),
+                  removedUris: diff.removedTrackIds.map(toUri),
+                },
+                {
+                  onSuccess: () => {
+                    setShowCommitDialog(true);
+                    setIsSyncingDiff(false);
+                  },
+                  onError: (error) => {
+                    console.error('Failed to record commit', error);
+                    setIsSyncingDiff(false);
+                  },
+                },
+              );
+            }
           }
           setHasCheckedForChanges(true);
           setIsCheckingDiff(false);
@@ -197,35 +219,9 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     fetchLatestCommit,
     computeDiff,
     currentTrackIds,
+    user?.id,
     isLoadingTracks,
   ]);
-
-  const handleCommitChanges = useCallback(async () => {
-    if (!pendingDiff || !user?.id) {
-      console.error('Missing data to commit changes');
-      return;
-    }
-
-    const toUri = (trackId: string) => `spotify:track:${trackId}`;
-
-    commitChanges(
-      {
-        playlistId,
-        userId: user.id,
-        addedUris: pendingDiff.addedTrackIds.map(toUri),
-        removedUris: pendingDiff.removedTrackIds.map(toUri),
-      },
-      {
-        onSuccess: () => {
-          setShowCommitDialog(false);
-          setPendingDiff(null);
-        },
-        onError: (error) => {
-          console.error('Failed to record commit', error);
-        },
-      },
-    );
-  }, [commitChanges, pendingDiff, playlistId, user?.id]);
 
   const handleCommitSelect = useCallback(
     (commit: Commit) => {
@@ -307,8 +303,6 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
         trackInfoMap={trackInfoMap}
         isLoadingRemovedDetails={isLoadingRemovedDetails}
         onClose={() => setShowCommitDialog(false)}
-        onCommit={handleCommitChanges}
-        isCommitPending={isRecordingCommit}
       />
 
       <Drawer
