@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Button, Group, Loader, Modal, Stack, Text } from '@mantine/core';
+import { Group, Loader, Modal, Stack, Text } from '@mantine/core';
 import type { SpotifyTrack } from '@/types/spotify';
 import { PendingDiff, summarizeDiff } from '@/util/playlistDiff';
 
@@ -9,8 +9,6 @@ interface UncommittedChangesModalProps {
   trackInfoMap: Map<string, SpotifyTrack | undefined>;
   isLoadingRemovedDetails?: boolean;
   onClose: () => void;
-  onCommit: () => void;
-  isCommitPending?: boolean;
 }
 
 export const UncommittedChangesModal = ({
@@ -19,8 +17,6 @@ export const UncommittedChangesModal = ({
   trackInfoMap,
   isLoadingRemovedDetails,
   onClose,
-  onCommit,
-  isCommitPending,
 }: UncommittedChangesModalProps) => {
   const addedSummary = useMemo(
     () => summarizeDiff(pendingDiff?.addedTrackIds ?? [], trackInfoMap),
@@ -36,8 +32,7 @@ export const UncommittedChangesModal = ({
     <Modal opened={opened} onClose={onClose} title="Uncommitted changes" centered>
       <Stack gap="sm">
         <Text size="sm">
-          We spotted changes to this playlist since the last commit. Would you like to commit the
-          following changes?
+          We spotted changes to this playlist since the last commit. Changes from Spotify synced.
         </Text>
 
         <Stack gap={6}>
@@ -80,15 +75,6 @@ export const UncommittedChangesModal = ({
             ))
           )}
         </Stack>
-
-        <Group justify="flex-end" mt="xs">
-          <Button variant="default" onClick={onClose} disabled={isCommitPending}>
-            Not now
-          </Button>
-          <Button onClick={onCommit} loading={isCommitPending}>
-            Commit changes
-          </Button>
-        </Group>
       </Stack>
     </Modal>
   );

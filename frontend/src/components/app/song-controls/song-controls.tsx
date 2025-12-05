@@ -31,14 +31,13 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
   const { data: playlistsData, isLoading: isLoadingPlaylists } = usePlaylists();
   const { mutateAsync: addSongAsync, isPending: isAddPending } = useAddSong();
   const { mutate: removeSong, isPending: isRemovePending } = useRemoveSong();
-  const { mutate: commitChanges, isPending: isRecordingCommit } = useCommit();
+  const { mutateAsync: commitChangesAsync } = useCommit();
 
   const [pendingDiff, setPendingDiff] = useState<PendingDiff | null>(null);
   const [showUncommittedModal, setShowUncommittedModal] = useState(false);
-  const [uncommittedPlaylistId, setUncommittedPlaylistId] = useState<string | null>(null);
-  const [pendingAddParams, setPendingAddParams] = useState<AddSongParams | null>(null);
   const [trackInfoMap, setTrackInfoMap] = useState<Map<string, SpotifyTrack | undefined>>(new Map());
   const [isCheckingForChanges, setIsCheckingForChanges] = useState(false);
+  const [isSyncingChanges, setIsSyncingChanges] = useState(false);
 
   const { data: removedTrackDetails, isLoading: isLoadingRemovedDetails } = useSpotifySongs(
     pendingDiff?.removedTrackIds && pendingDiff.removedTrackIds.length > 0
@@ -59,13 +58,11 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
   }
 
   const canRemove = Boolean(playlistId);
-  const isWorking = isAddPending || isRemovePending || isCheckingForChanges || isRecordingCommit;
+  const isWorking = isAddPending || isRemovePending || isCheckingForChanges || isSyncingChanges;
 
   const resetUncommittedState = useCallback(() => {
     setShowUncommittedModal(false);
     setPendingDiff(null);
-    setUncommittedPlaylistId(null);
-    setPendingAddParams(null);
     setTrackInfoMap(new Map());
   }, []);
 
@@ -143,17 +140,30 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
 
   const performAddSong = useCallback(
     async (params: AddSongParams) => {
-      const diffResult = await checkForUncommittedChanges(params.playlistId);
-      if (diffResult) {
-        setPendingDiff(diffResult.diff);
-        setPendingAddParams(params);
-        setUncommittedPlaylistId(params.playlistId);
-        setTrackInfoMap(diffResult.trackInfo);
-        setShowUncommittedModal(true);
-        return;
-      }
-
       try {
+        const diffResult = await checkForUncommittedChanges(params.playlistId);
+
+        if (diffResult && user?.id) {
+          setPendingDiff(diffResult.diff);
+          setTrackInfoMap(diffResult.trackInfo);
+          setIsSyncingChanges(true);
+
+          const toUri = (trackId: string) => `spotify:track:${trackId}`;
+          try {
+            await commitChangesAsync({
+              playlistId: params.playlistId,
+              userId: user.id,
+              addedUris: diffResult.diff.addedTrackIds.map(toUri),
+              removedUris: diffResult.diff.removedTrackIds.map(toUri),
+            });
+            setShowUncommittedModal(true);
+          } catch (error) {
+            console.error('Failed to record commit before add', error);
+          } finally {
+            setIsSyncingChanges(false);
+          }
+        }
+
         const data = await addSongAsync(params);
         console.log('Song added successfully! Snapshot:', data.snapshotId);
         resetUncommittedState();
@@ -161,7 +171,7 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
         console.error('Failed to add song:', error);
       }
     },
-    [addSongAsync, checkForUncommittedChanges, resetUncommittedState],
+    [addSongAsync, checkForUncommittedChanges, commitChangesAsync, resetUncommittedState, user?.id],
   );
 
   const handleAddSongToPlaylist = useCallback(
@@ -208,39 +218,6 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
       },
     );
   }, [onRemoveSong, playlistId, removeSong, track?.id, user?.id]);
-
-  const handleCommitChanges = useCallback(() => {
-    if (!pendingDiff || !user?.id || !uncommittedPlaylistId || !pendingAddParams) {
-      console.error('Missing data to commit changes before adding song');
-      return;
-    }
-
-    const toUri = (trackId: string) => `spotify:track:${trackId}`;
-
-    commitChanges(
-      {
-        playlistId: uncommittedPlaylistId,
-        userId: user.id,
-        addedUris: pendingDiff.addedTrackIds.map(toUri),
-        removedUris: pendingDiff.removedTrackIds.map(toUri),
-      },
-      {
-        onSuccess: () => {
-          performAddSong(pendingAddParams);
-        },
-        onError: (error) => {
-          console.error('Failed to record commit', error);
-        },
-      },
-    );
-  }, [
-    commitChanges,
-    pendingAddParams,
-    pendingDiff,
-    performAddSong,
-    uncommittedPlaylistId,
-    user?.id,
-  ]);
 
   return (
     <>
@@ -310,8 +287,6 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
         trackInfoMap={combinedTrackInfoMap}
         isLoadingRemovedDetails={isLoadingRemovedDetails}
         onClose={resetUncommittedState}
-        onCommit={handleCommitChanges}
-        isCommitPending={isRecordingCommit}
       />
     </>
   );
