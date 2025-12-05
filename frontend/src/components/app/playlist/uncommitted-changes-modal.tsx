@@ -29,10 +29,10 @@ export const UncommittedChangesModal = ({
   );
 
   return (
-    <Modal opened={opened} onClose={onClose} title="Uncommitted changes" centered>
+    <Modal opened={opened} onClose={onClose} title="Changes synced" centered>
       <Stack gap="sm">
         <Text size="sm">
-          We spotted changes to this playlist since the last commit. Changes from Spotify synced.
+          We spotted changes to this playlist since the last commit
         </Text>
 
         <Stack gap={6}>
