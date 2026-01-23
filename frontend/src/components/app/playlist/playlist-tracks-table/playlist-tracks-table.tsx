@@ -22,6 +22,7 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
     <Table highlightOnHover verticalSpacing="xs" withRowBorders={false}>
       <Table.Thead>
         <Table.Tr>
+          <Table.Th>#</Table.Th>
           <Table.Th></Table.Th>
           <Table.Th>Track</Table.Th>
           <Table.Th>Album</Table.Th>
@@ -34,11 +35,12 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
           borderTop: '1px solid var(--mantine-color-gray-3)',
         }}
       >
-        {validItems.map((item) => (
+        {validItems.map((item, index) => (
           <PlaylistTrackRow
             key={`${item.track!.id}-${item.addedAt}`}
             item={item}
             playlistId={playlistId}
+            index={index}
           />
         ))}
       </Table.Tbody>

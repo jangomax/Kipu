@@ -1,6 +1,10 @@
-import { Image, Stack, Table, Text } from '@mantine/core';
+import { ActionIcon, Center, Image, Stack, Table, Text } from '@mantine/core';
+import { IconPlayerPlayFilled } from '@tabler/icons-react';
 import type { SpotifyPlaylistTrackItem } from '@/types/spotify';
 import { PlaylistSongControls } from '../../song-controls/song-controls';
+import { playTrackOnWebPlayer } from '@/util/spotify-playback';
+import { getSpotifyDeviceId, subscribeSpotifyDeviceId } from '@/util/spotify-player-store';
+import { useEffect, useState } from 'react';
 
 const resolveDurationMs = (track: SpotifyPlaylistTrackItem['track']): number | undefined => {
   if (!track) {
@@ -28,10 +32,11 @@ const formatDuration = (durationMs?: number) => {
 export interface PlaylistTrackRowProps {
   item: SpotifyPlaylistTrackItem;
   playlistId: string;
+  index: number;
   onRemoveSong?: () => void;
 }
 
-export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTrackRowProps) => {
+export const PlaylistTrackRow = ({ item, playlistId, index, onRemoveSong }: PlaylistTrackRowProps) => {
   const track = item.track;
 
   if (!track) {
@@ -41,9 +46,55 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
   const trackImage = track.album.images?.[0]?.url;
   const artists = track.artists.map((artist) => artist.name).join(', ');
   const durationMs = resolveDurationMs(track);
+  const [deviceId, setDeviceId] = useState<string | null>(getSpotifyDeviceId());
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playError, setPlayError] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    return subscribeSpotifyDeviceId((nextId) => {
+      setDeviceId(nextId);
+    });
+  }, []);
+
+  const handlePlay = async () => {
+    setPlayError(null);
+    setIsPlaying(true);
+    try {
+      await playTrackOnWebPlayer(`spotify:track:${track.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to play track.';
+      setPlayError(message);
+    } finally {
+      setIsPlaying(false);
+    }
+  };
 
   return (
-    <Table.Tr key={`${track.id}-${item.addedAt}`}>
+    <Table.Tr key={`${track.id}-${item.addedAt}`} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+      <Table.Td width={50}>
+        <Center>
+          {isHovered ? (
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              radius="xl"
+              onClick={handlePlay}
+              loading={isPlaying}
+              style={{
+                width: 28,
+                height: 28,
+              }}
+            >
+              <IconPlayerPlayFilled size={14} color="var(--mantine-color-gray-5)" />
+            </ActionIcon>
+          ) : (
+            <Text size="sm" c="dimmed" ta="center">
+              {index + 1}
+            </Text>
+          )}
+        </Center>
+      </Table.Td>
       <Table.Td width={70}>
         {trackImage ? (
           <Image src={trackImage} alt={track.name} w={50} h={50} radius="sm" />
@@ -83,6 +134,11 @@ export const PlaylistTrackRow = ({ item, playlistId, onRemoveSong }: PlaylistTra
       </Table.Td>
       <Table.Td width={60}>
         <PlaylistSongControls track={track} playlistId={playlistId} onRemoveSong={onRemoveSong} />
+        {playError && (
+          <Text size="xs" c="red">
+            {playError}
+          </Text>
+        )}
       </Table.Td>
     </Table.Tr>
   );
