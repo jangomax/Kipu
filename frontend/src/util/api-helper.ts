@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { QueryClient } from '@tanstack/react-query';
 import { camelKeys } from 'js-convert-case';
 import { API_BASE_URL, SPOTIFY_API_BASE_URL } from './constants';
-import { getAccessToken } from './auth';
+import { getAccessToken, getValidAccessToken } from './auth';
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -23,8 +23,8 @@ export const spotifyApiClient: AxiosInstance = axios.create({
   baseURL: SPOTIFY_API_BASE_URL,
 });
 
-spotifyApiClient.interceptors.request.use((config) => {
-  const token = getAccessToken();
+spotifyApiClient.interceptors.request.use(async (config) => {
+  const token = await getValidAccessToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

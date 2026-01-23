@@ -21,8 +21,11 @@ export const loginHandler = (req: Request, res: Response) => {
   const clientId = process.env.SPOTIFY_CLIENT_ID!;
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI!;
   const scope = [
+    "streaming",
     "user-read-email",
     "user-read-private",
+    "user-read-playback-state",
+    "user-modify-playback-state",
     "playlist-read-private",
     "playlist-modify-public",
     "playlist-modify-private",

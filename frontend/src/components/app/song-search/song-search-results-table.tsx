@@ -74,6 +74,7 @@ export const SongSearchResultsTable = ({ tracks }: SongSearchResultsTableProps) 
         <Table highlightOnHover verticalSpacing="xs" withRowBorders={false}>
           <Table.Thead>
             <Table.Tr>
+              <Table.Th>#</Table.Th>
               <Table.Th></Table.Th>
               <Table.Th>Track</Table.Th>
               <Table.Th>Album</Table.Th>
@@ -86,8 +87,8 @@ export const SongSearchResultsTable = ({ tracks }: SongSearchResultsTableProps) 
               borderTop: '1px solid var(--mantine-color-gray-3)',
             }}
           >
-            {tracks.map((track) => (
-              <SongSearchResultRow key={track.id} track={track} />
+            {tracks.map((track, index) => (
+              <SongSearchResultRow key={track.id} track={track} index={index} />
             ))}
           </Table.Tbody>
         </Table>

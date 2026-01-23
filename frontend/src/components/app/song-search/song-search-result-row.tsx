@@ -1,6 +1,10 @@
-import { Image, Stack, Table, Text } from '@mantine/core';
+import { ActionIcon, Center, Image, Stack, Table, Text } from '@mantine/core';
+import { IconPlayerPlayFilled } from '@tabler/icons-react';
 import type { SpotifyTrack } from '@/types/spotify';
 import { PlaylistSongControls } from '@/components/app/song-controls';
+import { playTrackOnWebPlayer } from '@/util/spotify-playback';
+import { getSpotifyDeviceId, subscribeSpotifyDeviceId } from '@/util/spotify-player-store';
+import { useEffect, useState } from 'react';
 
 const formatDuration = (durationMs?: number) => {
   if (!durationMs || Number.isNaN(durationMs)) {
@@ -15,14 +19,61 @@ const formatDuration = (durationMs?: number) => {
 
 interface SongSearchResultRowProps {
   track: SpotifyTrack;
+  index: number;
 }
 
-export const SongSearchResultRow = ({ track }: SongSearchResultRowProps) => {
+export const SongSearchResultRow = ({ track, index }: SongSearchResultRowProps) => {
   const trackImage = track.album.images?.[0]?.url;
   const artists = track.artists.map((artist) => artist.name).join(', ');
+  const [deviceId, setDeviceId] = useState<string | null>(getSpotifyDeviceId());
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playError, setPlayError] = useState<string | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    return subscribeSpotifyDeviceId((nextId) => {
+      setDeviceId(nextId);
+    });
+  }, []);
+
+  const handlePlay = async () => {
+    setPlayError(null);
+    setIsPlaying(true);
+    try {
+      await playTrackOnWebPlayer(`spotify:track:${track.id}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to play track.';
+      setPlayError(message);
+    } finally {
+      setIsPlaying(false);
+    }
+  };
 
   return (
-    <Table.Tr>
+    <Table.Tr onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+      <Table.Td width={50}>
+        <Center>
+          {isHovered ? (
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              radius="xl"
+              onClick={handlePlay}
+              loading={isPlaying}
+              style={{
+                width: 28,
+                height: 28,
+              }}
+            >
+              <IconPlayerPlayFilled size={14} color="var(--mantine-color-gray-5)" />
+            </ActionIcon>
+          ) : (
+            <Text size="sm" c="dimmed" ta="center">
+              {index + 1}
+            </Text>
+          )}
+        </Center>
+      </Table.Td>
       <Table.Td width={70}>
         {trackImage ? (
           <Image src={trackImage} alt={track.name} w={50} h={50} radius="sm" />
@@ -60,8 +111,15 @@ export const SongSearchResultRow = ({ track }: SongSearchResultRowProps) => {
           {formatDuration(track.durationMs)}
         </Text>
       </Table.Td>
-      <Table.Td width={60}>
-        <PlaylistSongControls track={track} />
+      <Table.Td width={110}>
+        <Stack gap={4} align="flex-end">
+          <PlaylistSongControls track={track} />
+          {playError && (
+            <Text size="xs" c="red">
+              {playError}
+            </Text>
+          )}
+        </Stack>
       </Table.Td>
     </Table.Tr>
   );
