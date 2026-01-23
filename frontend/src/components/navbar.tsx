@@ -75,8 +75,13 @@ export const AppNavbar = () => {
               <IconArrowRight size={16} stroke={1.5} />
             </ActionIcon>
           }
-          style={{
-            width: 'min(480px, 70vw)',
+          styles={{
+            root: {
+              width: 'min(480px, 70vw)',
+            },
+            input: {
+              fontSize: '0.875rem',
+            },
           }}
         />
       </div>

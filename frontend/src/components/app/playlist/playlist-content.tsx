@@ -28,6 +28,7 @@ import { Commit } from '@/types/commits';
 import { CheckoutResponse } from '@/types/checkout';
 import { SpotifyPlaylistTrackItem } from '@/types/spotify';
 import { PendingDiff, computeDiff } from '@/util/playlistDiff';
+import { useUiStore } from '@/stores/useUiStore';
 
 interface PlaylistContentProps {
   playlistId: string;
@@ -41,6 +42,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   const [hasCheckedForChanges, setHasCheckedForChanges] = useState(false);
   const [isCheckingDiff, setIsCheckingDiff] = useState(false);
   const [, setIsSyncingDiff] = useState(false);
+  const isMobile = useUiStore((state) => state.isMobile);
 
   const { data: user } = useSpotifyUser();
   const { mutate: checkout } = useCheckout();
@@ -323,39 +325,51 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
       <Stack gap="md" style={{ flex: 1, minWidth: 0 }}>
         {checkoutData && (
           <Alert color="blue" title="Viewing Historical Version">
-            <Group justify="space-between" align="center">
+            <Stack gap="sm">
               <Text size="sm">
                 You are viewing this playlist as it was at{' '}
                 {new Date(checkoutData.timestamp).toLocaleString()}
               </Text>
-              <Button size="xs" variant="light" onClick={handleReturnToHead}>
+              <Button
+                size="xs"
+                variant="light"
+                onClick={handleReturnToHead}
+                style={{ width: '100%' }}
+              >
                 Return to Current Version
               </Button>
-            </Group>
+            </Stack>
           </Alert>
         )}
 
-        <Group justify="flex-end">
+        {/* <Group justify="flex-end">
           <Button
             leftSection={<IconHistory size={18} />}
             variant="light"
             onClick={() => setDrawerOpened(true)}
+            size="sm"
           >
-            View History
+            {!isMobile && 'View History'}
           </Button>
-        </Group>
+        </Group> */}
 
         <Group align="flex-start" gap="md" wrap="wrap">
           {coverImage ? (
-            <Image src={coverImage} alt={playlist.name} w={200} h={200} radius="md" />
+            <Image
+              src={coverImage}
+              alt={playlist.name}
+              w={{ base: 150, sm: 200 }}
+              h={{ base: 150, sm: 200 }}
+              radius="md"
+            />
           ) : (
             <Paper
               withBorder
               shadow="sm"
               radius="md"
               style={{
-                width: 200,
-                height: 200,
+                width: 150,
+                height: 150,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -366,7 +380,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
           )}
 
           <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
-            <Title order={2}>
+            <Title order={2} style={{ fontSize: 'clamp(1.25rem, 5vw, 2rem)' }}>
               {playlist.name}
               {checkoutData && (
                 <Text component="span" size="lg" c="dimmed" fw={400}>
@@ -375,7 +389,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
                 </Text>
               )}
             </Title>
-            {playlist.description && <Text>{playlist.description}</Text>}
+            {playlist.description && <Text size="sm">{playlist.description}</Text>}
             <Text size="sm" c="dimmed">
               {checkoutData
                 ? `${checkoutData.tracks.length} ${
@@ -392,6 +406,14 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
               </Anchor>
             )}
           </Stack>
+          <Button
+            leftSection={<IconHistory size={18} />}
+            variant="light"
+            onClick={() => setDrawerOpened(true)}
+            size="sm"
+          >
+            {!isMobile && 'View History'}
+          </Button>
         </Group>
 
         {isLoadingCheckoutTracks && checkoutData ? (

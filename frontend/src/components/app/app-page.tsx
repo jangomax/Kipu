@@ -20,6 +20,7 @@ import { SongSearchResultsTable } from '@/components/app/song-search/song-search
 import { useTrackSearch } from '@/hooks/useTrackSearch';
 import { useKeptCommits } from '@/hooks/useKeptCommits';
 import { getAccessToken } from '@/util/auth';
+import { useUiStore } from '@/stores/useUiStore';
 
 export const AppPage = () => {
   const navigate = useNavigate();
@@ -27,6 +28,7 @@ export const AppPage = () => {
   const playlistId = searchParams.get('playlistId');
   const queryParam = searchParams.get('query') ?? '';
   const trimmedQuery = queryParam.trim();
+  const isMobile = useUiStore((state) => state.isMobile);
 
   const { data: user, isLoading: loadingUser, isError: userError } = useSpotifyUser();
   const { data: playlists, isLoading: loadingPlaylists } = usePlaylists();
@@ -114,15 +116,16 @@ export const AppPage = () => {
     const tracks = trackSearch?.items ?? [];
 
     return (
-      <Container size="xl" style={{ marginTop: '1.5rem', maxWidth: '100%' }}>
+      <Container size="xl" px={{ base: 'sm', sm: 'md' }} style={{ marginTop: '1.5rem', maxWidth: '100%' }}>
         <Stack gap="md">
           <Button
             variant="subtle"
             leftSection={<IconArrowLeft size={16} />}
             onClick={() => setSearchParams({})}
             style={{ alignSelf: 'flex-start' }}
+            size="sm"
           >
-            Back to playlists
+            {!isMobile && 'Back to playlists'}
           </Button>
           <Stack gap="xs">
             <Title order={3}>Results for &quot;{trimmedQuery}&quot;</Title>
@@ -138,18 +141,19 @@ export const AppPage = () => {
 
   if (playlistId) {
     return (
-      <Container size="xl" style={{ marginTop: '1.5rem', maxWidth: '100%' }}>
+      <Container size="xl" px={{ base: 'sm', sm: 'md' }} style={{ marginTop: '1.5rem', maxWidth: '100%' }}>
         <Stack gap="md">
           <Button
             variant="subtle"
             leftSection={<IconArrowLeft size={16} />}
             onClick={() => setSearchParams({})}
             style={{ alignSelf: 'flex-start' }}
+            size="sm"
           >
-            Back to Playlists
+            {!isMobile && 'Back to Playlists'}
           </Button>
 
-          <Group align="flex-start" gap="xl" wrap="nowrap" style={{ alignItems: 'stretch' }}>
+          <Group align="flex-start" gap="xl" wrap="wrap" style={{ alignItems: 'stretch' }}>
             <PlaylistSidebarList
               playlists={filteredPlaylists}
               currentId={playlistId}
@@ -167,11 +171,11 @@ export const AppPage = () => {
 
   // Show playlist grid
   return (
-    <Container size="xl">
+    <Container size="xl" px={{ base: 'sm', sm: 'md' }}>
       <Stack gap="md" style={{ marginTop: '2rem' }}>
         <Title order={3}>Your Playlists</Title>
         {filteredPlaylists.length > 0 ? (
-          <SimpleGrid cols={{ base: 1, sm: 2, md: 3, lg: 6 }} spacing="lg">
+          <SimpleGrid cols={{ base: 2, xs: 2, sm: 3, md: 4, lg: 6 }} spacing={{ base: 'sm', sm: 'md', md: 'lg' }}>
             {filteredPlaylists.map((playlist) => (
               <PlaylistCard
                 key={playlist.id}
