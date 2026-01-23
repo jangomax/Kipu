@@ -1,7 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ActionIcon, Loader, Menu } from '@mantine/core';
+import { ActionIcon, Loader, Menu, Drawer, Stack, Button, Text, Divider } from '@mantine/core';
 import { IconChevronRight, IconDots, IconPlus, IconTrash } from '@tabler/icons-react';
-import type { GetPlaylistTracksResponse, SpotifyPlaylistTrackItem, SpotifyTrack } from '@/types/spotify';
+import type {
+  GetPlaylistTracksResponse,
+  SpotifyPlaylistTrackItem,
+  SpotifyTrack,
+} from '@/types/spotify';
 import { useAddSong } from '@/hooks/useAddSong';
 import { useRemoveSong } from '@/hooks/useRemoveSong';
 import { usePlaylists } from '@/hooks/usePlaylists';
@@ -13,6 +17,7 @@ import { kipuGet, spotifyGet } from '@/util/api-helper';
 import { PendingDiff, computeDiff } from '@/util/playlistDiff';
 import { GetCommitsResponse } from '@/types/commits';
 import { CheckoutResponse } from '@/types/checkout';
+import { useUiStore } from '@/stores/useUiStore';
 
 export interface PlaylistSongControlsProps {
   track: SpotifyTrack | null | undefined;
@@ -26,18 +31,26 @@ interface AddSongParams {
   userId: string;
 }
 
-export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: PlaylistSongControlsProps) => {
+export const PlaylistSongControls = ({
+  track,
+  playlistId,
+  onRemoveSong,
+}: PlaylistSongControlsProps) => {
   const { data: user } = useSpotifyUser();
   const { data: playlistsData, isLoading: isLoadingPlaylists } = usePlaylists();
   const { mutateAsync: addSongAsync, isPending: isAddPending } = useAddSong();
   const { mutate: removeSong, isPending: isRemovePending } = useRemoveSong();
   const { mutateAsync: commitChangesAsync } = useCommit();
+  const isMobile = useUiStore((state) => state.isMobile);
 
   const [pendingDiff, setPendingDiff] = useState<PendingDiff | null>(null);
   const [showUncommittedModal, setShowUncommittedModal] = useState(false);
-  const [trackInfoMap, setTrackInfoMap] = useState<Map<string, SpotifyTrack | undefined>>(new Map());
+  const [trackInfoMap, setTrackInfoMap] = useState<Map<string, SpotifyTrack | undefined>>(
+    new Map(),
+  );
   const [isCheckingForChanges, setIsCheckingForChanges] = useState(false);
   const [isSyncingChanges, setIsSyncingChanges] = useState(false);
+  const [mobileDrawerOpened, setMobileDrawerOpened] = useState(false);
 
   const { data: removedTrackDetails, isLoading: isLoadingRemovedDetails } = useSpotifySongs(
     pendingDiff?.removedTrackIds && pendingDiff.removedTrackIds.length > 0
@@ -181,13 +194,17 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
         return;
       }
 
+      if (isMobile) {
+        setMobileDrawerOpened(false);
+      }
+
       await performAddSong({
         playlistId: targetPlaylistId,
         uris: [`spotify:track:${track.id}`],
         userId: user.id,
       });
     },
-    [performAddSong, track?.id, user?.id],
+    [performAddSong, track?.id, user?.id, isMobile],
   );
 
   const handleRemoveSong = useCallback(() => {
@@ -209,7 +226,12 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
       },
       {
         onSuccess: (data) => {
-          console.log('Song removed successfully! Snapshot:', data.snapshotId, 'Commit:', data.commitId);
+          console.log(
+            'Song removed successfully! Snapshot:',
+            data.snapshotId,
+            'Commit:',
+            data.commitId,
+          );
           onRemoveSong?.();
         },
         onError: (error) => {
@@ -219,6 +241,92 @@ export const PlaylistSongControls = ({ track, playlistId, onRemoveSong }: Playli
     );
   }, [onRemoveSong, playlistId, removeSong, track?.id, user?.id]);
 
+  // Mobile
+  if (isMobile) {
+    return (
+      <>
+        <ActionIcon variant="subtle" color="gray" onClick={() => setMobileDrawerOpened(true)}>
+          <IconDots size={18} />
+        </ActionIcon>
+
+        <Drawer
+          opened={mobileDrawerOpened}
+          onClose={() => setMobileDrawerOpened(false)}
+          position="bottom"
+          size="auto"
+          title="Track Actions"
+          padding="md"
+        >
+          <Stack gap="md">
+            <div>
+              <Text size="sm" fw={600} mb="xs">
+                Add to playlist
+              </Text>
+              {isLoadingPlaylists ? (
+                <Stack align="center" py="md">
+                  <Loader size="sm" />
+                  <Text size="xs" c="dimmed">
+                    Loading playlists...
+                  </Text>
+                </Stack>
+              ) : (
+                <Stack gap="xs">
+                  {playlistsData?.items.map((playlist) => (
+                    <Button
+                      key={playlist.id}
+                      variant="transparent"
+                      onClick={() => {
+                        void handleAddSongToPlaylist(playlist.id);
+                      }}
+                      disabled={isWorking}
+                      fullWidth
+                      justify="flex-start"
+                    >
+                      {playlist.name}
+                    </Button>
+                  ))}
+                  {(!playlistsData || playlistsData.items.length === 0) && (
+                    <Text size="sm" c="dimmed" ta="center" py="md">
+                      No playlists available
+                    </Text>
+                  )}
+                </Stack>
+              )}
+            </div>
+
+            {canRemove && (
+              <>
+                <Divider />
+                <Button
+                  leftSection={<IconTrash size={16} />}
+                  color="red"
+                  variant="light"
+                  onClick={() => {
+                    handleRemoveSong();
+                    setMobileDrawerOpened(false);
+                  }}
+                  disabled={isWorking || !user?.id}
+                  fullWidth
+                >
+                  Remove from playlist
+                </Button>
+              </>
+            )}
+          </Stack>
+        </Drawer>
+
+        <UncommittedChangesModal
+          opened={showUncommittedModal}
+          pendingDiff={pendingDiff}
+          trackInfoMap={combinedTrackInfoMap}
+          isLoadingRemovedDetails={isLoadingRemovedDetails}
+          onClose={resetUncommittedState}
+        />
+      </>
+    );
+  }
+
+  //desktop
   return (
     <>
       <Menu shadow="md" width={200}>
