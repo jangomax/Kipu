@@ -42,7 +42,13 @@ const fetchDevices = async (token: string) => {
   return data;
 };
 
-export const playTrackOnWebPlayer = async (trackUri: string): Promise<void> => {
+type PlayOptions = {
+  trackUri: string;
+  uris?: string[];
+  offset?: number;
+};
+
+export const playTrackOnWebPlayer = async ({ trackUri, uris, offset }: PlayOptions): Promise<void> => {
   sessionStorage.setItem('kipu_player_visible', '1');
   window.dispatchEvent(new CustomEvent('kipu-player-visibility', { detail: { visible: true } }));
 
@@ -104,6 +110,10 @@ export const playTrackOnWebPlayer = async (trackUri: string): Promise<void> => {
     throw new Error('Spotify Web Player device not available.');
   }
 
+  const body = uris && uris.length > 0
+    ? { uris, offset: typeof offset === 'number' ? { position: offset } : undefined }
+    : { uris: [trackUri] };
+
   const playWithDeviceParam = async () =>
     fetch(`${SPOTIFY_API_BASE_URL}/me/player/play?device_id=${encodeURIComponent(targetDeviceId)}`, {
       method: 'PUT',
@@ -111,7 +121,7 @@ export const playTrackOnWebPlayer = async (trackUri: string): Promise<void> => {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ uris: [trackUri] }),
+      body: JSON.stringify(body),
     });
 
   const playWithoutDeviceParam = async () =>
@@ -121,7 +131,7 @@ export const playTrackOnWebPlayer = async (trackUri: string): Promise<void> => {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ uris: [trackUri] }),
+      body: JSON.stringify(body),
     });
 
   let response = await playWithDeviceParam();

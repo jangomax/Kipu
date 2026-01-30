@@ -20,9 +20,10 @@ const formatDuration = (durationMs?: number) => {
 interface SongSearchResultRowProps {
   track: SpotifyTrack;
   index: number;
+  queueUris?: string[];
 }
 
-export const SongSearchResultRow = ({ track, index }: SongSearchResultRowProps) => {
+export const SongSearchResultRow = ({ track, index, queueUris }: SongSearchResultRowProps) => {
   const trackImage = track.album.images?.[0]?.url;
   const artists = track.artists.map((artist) => artist.name).join(', ');
   const [deviceId, setDeviceId] = useState<string | null>(getSpotifyDeviceId());
@@ -40,7 +41,11 @@ export const SongSearchResultRow = ({ track, index }: SongSearchResultRowProps) 
     setPlayError(null);
     setIsPlaying(true);
     try {
-      await playTrackOnWebPlayer(`spotify:track:${track.id}`);
+      await playTrackOnWebPlayer({
+        trackUri: `spotify:track:${track.id}`,
+        uris: queueUris,
+        offset: index,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to play track.';
       setPlayError(message);

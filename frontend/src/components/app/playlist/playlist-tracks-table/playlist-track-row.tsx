@@ -34,9 +34,16 @@ export interface PlaylistTrackRowProps {
   playlistId: string;
   index: number;
   onRemoveSong?: () => void;
+  queueUris?: string[];
 }
 
-export const PlaylistTrackRow = ({ item, playlistId, index, onRemoveSong }: PlaylistTrackRowProps) => {
+export const PlaylistTrackRow = ({
+  item,
+  playlistId,
+  index,
+  onRemoveSong,
+  queueUris,
+}: PlaylistTrackRowProps) => {
   const track = item.track;
 
   if (!track) {
@@ -61,7 +68,11 @@ export const PlaylistTrackRow = ({ item, playlistId, index, onRemoveSong }: Play
     setPlayError(null);
     setIsPlaying(true);
     try {
-      await playTrackOnWebPlayer(`spotify:track:${track.id}`);
+      await playTrackOnWebPlayer({
+        trackUri: `spotify:track:${track.id}`,
+        uris: queueUris,
+        offset: index,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to play track.';
       setPlayError(message);

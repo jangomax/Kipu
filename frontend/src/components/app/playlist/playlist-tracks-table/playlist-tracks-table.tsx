@@ -14,11 +14,17 @@ export interface PlaylistTracksTableProps {
 export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTableProps) => {
   const validItems = items.filter((item) => item.track);
   const [isPlayingId, setIsPlayingId] = useState<string | null>(null);
+  const queueUris = validItems.map((item) => `spotify:track:${item.track!.id}`);
 
   const handlePlay = async (trackId: string) => {
+    const offset = validItems.findIndex((item) => item.track?.id === trackId);
     setIsPlayingId(trackId);
     try {
-      await playTrackOnWebPlayer(`spotify:track:${trackId}`);
+      await playTrackOnWebPlayer({
+        trackUri: `spotify:track:${trackId}`,
+        uris: queueUris,
+        offset: offset >= 0 ? offset : undefined,
+      });
     } finally {
       setIsPlayingId(null);
     }
@@ -120,6 +126,7 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                 item={item}
                 playlistId={playlistId}
                 index={index}
+                queueUris={queueUris}
               />
             ))}
           </Table.Tbody>

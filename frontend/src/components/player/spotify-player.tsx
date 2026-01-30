@@ -33,6 +33,8 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
   const [duration, setDuration] = useState(0);
   const lastPositionRef = useRef(0);
   const lastUpdateRef = useRef(0);
+  const currentTrackIdRef = useRef<string | null>(null);
+  const trackStartConfirmedRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -103,6 +105,12 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
           if (!state || !isMounted) {
             return;
           }
+          const nextTrackId = state.track_window.current_track?.id ?? null;
+          if (nextTrackId !== currentTrackIdRef.current) {
+            currentTrackIdRef.current = nextTrackId;
+            trackStartConfirmedRef.current = false;
+            setPosition(0);
+          }
           console.log('[SpotifyPlayer] state_changed', {
             track: state.track_window.current_track?.name,
             paused: state.paused,
@@ -111,7 +119,12 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
           });
           setCurrentTrack(state.track_window.current_track);
           setIsPaused(state.paused);
-          setPosition(state.position);
+          if (state.position > 0) {
+            trackStartConfirmedRef.current = true;
+          }
+          if (trackStartConfirmedRef.current || state.paused) {
+            setPosition(state.position);
+          }
           setDuration(state.duration);
           lastPositionRef.current = state.position;
           lastUpdateRef.current = performance.now();
@@ -170,15 +183,82 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
       .catch((err: unknown) => console.error('Toggle play failed:', err));
   };
 
+  const sendPlaybackCommand = async (command: 'previous' | 'next') => {
+    const token = await getValidAccessToken();
+    if (!token) {
+      throw new Error('Spotify access token missing.');
+    }
+
+    const makeRequest = (withDeviceId: boolean) =>
+      fetch(
+        `${SPOTIFY_API_BASE_URL}/me/player/${command}${
+          withDeviceId && deviceId ? `?device_id=${encodeURIComponent(deviceId)}` : ''
+        }`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+
+    let response = await makeRequest(false);
+    if (!response.ok && deviceId) {
+      response = await makeRequest(true);
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `Failed to ${command} track.`);
+    }
+  };
+
+  const syncPlaybackState = async () => {
+    const state = await playerRef.current?.getCurrentState();
+    if (!state) {
+      return;
+    }
+    const nextTrackId = state.track_window.current_track?.id ?? null;
+    if (nextTrackId !== currentTrackIdRef.current) {
+      currentTrackIdRef.current = nextTrackId;
+      trackStartConfirmedRef.current = false;
+      setPosition(0);
+    }
+    setCurrentTrack(state.track_window.current_track);
+    setIsPaused(state.paused);
+    if (state.position > 0) {
+      trackStartConfirmedRef.current = true;
+    }
+    if (trackStartConfirmedRef.current || state.paused) {
+      setPosition(state.position);
+    }
+    setDuration(state.duration);
+    lastPositionRef.current = state.position;
+    lastUpdateRef.current = performance.now();
+  };
+
   const handlePrev = () => {
-    playerRef.current
-      ?.previousTrack()
+    sendPlaybackCommand('previous')
+      .then(() => {
+        window.setTimeout(() => {
+          syncPlaybackState().catch((err: unknown) =>
+            console.error('Sync state after previous failed:', err),
+          );
+        }, 300);
+      })
       .catch((err: unknown) => console.error('Previous track failed:', err));
   };
 
   const handleNext = () => {
-    playerRef.current
-      ?.nextTrack()
+    sendPlaybackCommand('next')
+      .then(() => {
+        window.setTimeout(() => {
+          syncPlaybackState().catch((err: unknown) =>
+            console.error('Sync state after next failed:', err),
+          );
+        }, 300);
+      })
       .catch((err: unknown) => console.error('Next track failed:', err));
   };
 
@@ -192,21 +272,46 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
   };
 
   useEffect(() => {
-    if (isPaused || duration === 0) {
+    if (isPaused || !playerRef.current) {
       return;
     }
 
-    let rafId = 0;
-    const tick = (now: number) => {
-      const elapsed = now - lastUpdateRef.current;
-      const nextPosition = Math.min(lastPositionRef.current + elapsed, duration);
-      setPosition(nextPosition);
-      rafId = requestAnimationFrame(tick);
-    };
+    let cancelled = false;
+    const intervalId = window.setInterval(async () => {
+      if (cancelled) {
+        return;
+      }
+      try {
+        const state = await playerRef.current?.getCurrentState();
+        if (!state) {
+          return;
+        }
+        const nextTrackId = state.track_window.current_track?.id ?? null;
+        if (nextTrackId !== currentTrackIdRef.current) {
+          currentTrackIdRef.current = nextTrackId;
+          trackStartConfirmedRef.current = false;
+          setPosition(0);
+        }
+        setDuration(state.duration);
+        setIsPaused(state.paused);
+        if (state.position > 0) {
+          trackStartConfirmedRef.current = true;
+        }
+        if (trackStartConfirmedRef.current || state.paused) {
+          setPosition(state.position);
+        }
+        lastPositionRef.current = state.position;
+        lastUpdateRef.current = performance.now();
+      } catch (err) {
+        console.error('Failed to sync playback state:', err);
+      }
+    }, 500);
 
-    rafId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafId);
-  }, [isPaused, duration]);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [isPaused]);
 
   const albumArt = currentTrack?.album.images?.[0]?.url;
   const trackTitle = currentTrack?.name ?? 'No track playing';

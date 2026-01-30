@@ -12,11 +12,17 @@ interface SongSearchResultsTableProps {
 
 export const SongSearchResultsTable = ({ tracks }: SongSearchResultsTableProps) => {
   const [isPlayingId, setIsPlayingId] = useState<string | null>(null);
+  const queueUris = tracks.map((track) => `spotify:track:${track.id}`);
 
   const handlePlay = async (trackId: string) => {
+    const offset = tracks.findIndex((track) => track.id === trackId);
     setIsPlayingId(trackId);
     try {
-      await playTrackOnWebPlayer(`spotify:track:${trackId}`);
+      await playTrackOnWebPlayer({
+        trackUri: `spotify:track:${trackId}`,
+        uris: queueUris,
+        offset: offset >= 0 ? offset : undefined,
+      });
     } finally {
       setIsPlayingId(null);
     }
@@ -112,7 +118,12 @@ export const SongSearchResultsTable = ({ tracks }: SongSearchResultsTableProps) 
             }}
           >
             {tracks.map((track, index) => (
-              <SongSearchResultRow key={track.id} track={track} index={index} />
+              <SongSearchResultRow
+                key={track.id}
+                track={track}
+                index={index}
+                queueUris={queueUris}
+              />
             ))}
           </Table.Tbody>
         </Table>
