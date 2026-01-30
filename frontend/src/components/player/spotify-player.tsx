@@ -165,22 +165,30 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
   }, []);
 
   const handleTogglePlay = () => {
-    playerRef.current?.togglePlay().catch((err) => console.error('Toggle play failed:', err));
+    playerRef.current
+      ?.togglePlay()
+      .catch((err: unknown) => console.error('Toggle play failed:', err));
   };
 
   const handlePrev = () => {
-    playerRef.current?.previousTrack().catch((err) => console.error('Previous track failed:', err));
+    playerRef.current
+      ?.previousTrack()
+      .catch((err: unknown) => console.error('Previous track failed:', err));
   };
 
   const handleNext = () => {
-    playerRef.current?.nextTrack().catch((err) => console.error('Next track failed:', err));
+    playerRef.current
+      ?.nextTrack()
+      .catch((err: unknown) => console.error('Next track failed:', err));
   };
 
   const handleSeek = (value: number) => {
     setPosition(value);
     lastPositionRef.current = value;
     lastUpdateRef.current = performance.now();
-    playerRef.current?.seek(value).catch((err) => console.error('Seek failed:', err));
+    playerRef.current
+      ?.seek(value)
+      .catch((err: unknown) => console.error('Seek failed:', err));
   };
 
   useEffect(() => {
@@ -223,7 +231,14 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
         </ActionIcon>
       )}
       <Stack gap="xs">
-        <Group justify="space-between" wrap="nowrap" align="center" style={{ position: 'relative' }}>
+        {/* Desktop layout */}
+        <Group
+          justify="space-between"
+          wrap="nowrap"
+          align="center"
+          style={{ position: 'relative' }}
+          visibleFrom="sm"
+        >
           <Group gap="sm" wrap="nowrap" style={{ flex: 1, minWidth: 0, maxWidth: '45%' }}>
             {albumArt ? (
               <Image src={albumArt} alt={trackTitle} w={48} h={48} radius="md" />
@@ -270,6 +285,47 @@ export const SpotifyPlayer = ({ onClose }: SpotifyPlayerProps) => {
             </ActionIcon>
           </Group>
         </Group>
+
+        {/* Mobile layout */}
+        <Stack gap="xs" hiddenFrom="sm">
+          <Group gap="sm" wrap="nowrap" align="center">
+            {albumArt ? (
+              <Image src={albumArt} alt={trackTitle} w={56} h={56} radius="md" />
+            ) : (
+              <Paper withBorder radius="md" w={56} h={56} />
+            )}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <Text fw={600} lineClamp={1}>
+                {trackTitle}
+              </Text>
+              <Text size="xs" c="dimmed" lineClamp={1}>
+                {trackArtists}
+              </Text>
+              {!isReady && (
+                <Text size="xs" c="dimmed">
+                  Connecting to Spotify Web Player...
+                </Text>
+              )}
+            </div>
+          </Group>
+          <Group gap="md" justify="center">
+            <ActionIcon variant="subtle" color="gray" onClick={handlePrev} disabled={!deviceId}>
+              <IconPlayerSkipBackFilled size={20} />
+            </ActionIcon>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size="lg"
+              onClick={handleTogglePlay}
+              disabled={!deviceId}
+            >
+              {isPaused ? <IconPlayerPlayFilled size={22} /> : <IconPlayerPauseFilled size={22} />}
+            </ActionIcon>
+            <ActionIcon variant="subtle" color="gray" onClick={handleNext} disabled={!deviceId}>
+              <IconPlayerSkipForwardFilled size={20} />
+            </ActionIcon>
+          </Group>
+        </Stack>
 
         <Group gap="xs" align="center">
           <Text size="xs" c="dimmed" style={{ width: 32 }}>

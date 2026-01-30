@@ -1,13 +1,27 @@
-import { Table, Text, Box, Stack, Image, Group } from '@mantine/core';
+import { ActionIcon, Table, Text, Box, Stack, Image, Group } from '@mantine/core';
+import { IconPlayerPlayFilled } from '@tabler/icons-react';
+import { useState } from 'react';
 import type { SpotifyTrack } from '@/types/spotify';
 import { SongSearchResultRow } from './song-search-result-row';
 import { PlaylistSongControls } from '../song-controls/song-controls';
+import { playTrackOnWebPlayer } from '@/util/spotify-playback';
 
 interface SongSearchResultsTableProps {
   tracks: SpotifyTrack[];
 }
 
 export const SongSearchResultsTable = ({ tracks }: SongSearchResultsTableProps) => {
+  const [isPlayingId, setIsPlayingId] = useState<string | null>(null);
+
+  const handlePlay = async (trackId: string) => {
+    setIsPlayingId(trackId);
+    try {
+      await playTrackOnWebPlayer(`spotify:track:${trackId}`);
+    } finally {
+      setIsPlayingId(null);
+    }
+  };
+
   if (tracks.length === 0) {
     return (
       <Text c="dimmed" size="sm">
@@ -62,6 +76,16 @@ export const SongSearchResultsTable = ({ tracks }: SongSearchResultsTableProps) 
                     {artists}
                   </Text>
                 </Stack>
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  radius="xl"
+                  onClick={() => handlePlay(track.id)}
+                  loading={isPlayingId === track.id}
+                  style={{ width: 32, height: 32 }}
+                >
+                  <IconPlayerPlayFilled size={16} />
+                </ActionIcon>
                 <PlaylistSongControls track={track} />
               </Group>
             );
