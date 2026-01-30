@@ -12,8 +12,9 @@ import {
   Text,
   Title,
 } from '@mantine/core';
-import { IconHistory } from '@tabler/icons-react';
+import { IconHistory, IconVersions } from '@tabler/icons-react';
 import { usePlaylists } from '@/hooks/usePlaylists';
+import { useCheckIn } from '@/hooks/useCheckIn';
 import { usePlaylistTracks } from '@/hooks/usePlaylistTracks';
 import { useSpotifyUserProfile } from '@/hooks/useSpotifyUserProfile';
 import { useCommits } from '@/hooks/useCommits';
@@ -48,6 +49,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   const { mutate: checkout } = useCheckout();
   const { mutate: fetchLatestCommit } = useCheckout();
   const { mutate: commitChanges } = useCommit();
+  const { mutate: checkIn, isPending: isCheckingIn } = useCheckIn();
 
   const {
     data: playlists,
@@ -247,6 +249,21 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     setCheckoutData(null);
   }, []);
 
+  const handleCheckIn = useCallback(() => {
+    if (!user?.id) return;
+    checkIn(
+      { playlistId, userId: user.id },
+      {
+        onSuccess: () => {
+          console.log('Playlist checked in successfully');
+        },
+        onError: (error) => {
+          console.error('Failed to check in playlist:', error);
+        },
+      },
+    );
+  }, [checkIn, playlistId, user?.id]);
+
   // Convert checkout tracks to PlaylistTrackItem format
   const checkoutTracks = useMemo((): SpotifyPlaylistTrackItem[] => {
     if (!checkoutTracksData?.tracks) return [];
@@ -323,6 +340,27 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
       </Drawer>
 
       <Stack gap="md" style={{ flex: 1, minWidth: 0 }}>
+        {commits.length === 0 && !isLoadingTracks && (
+          <Alert color="yellow" title="Untracked Playlist">
+            <Stack gap="sm">
+              <Text size="sm">
+                This playlist is not being tracked. Check it in to start tracking versions with
+                Kipu.
+              </Text>
+              <Button
+                size="xs"
+                variant="light"
+                leftSection={<IconVersions size={16} />}
+                onClick={handleCheckIn}
+                loading={isCheckingIn}
+                disabled={!user?.id || playlist.tracks.total === 0}
+              >
+                Check In Playlist
+              </Button>
+            </Stack>
+          </Alert>
+        )}
+
         {checkoutData && (
           <Alert color="blue" title="Viewing Historical Version">
             <Stack gap="sm">

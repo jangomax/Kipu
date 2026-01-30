@@ -3,6 +3,47 @@ import { CommitRequest, CommitResponse } from "@/models/api/commit";
 import { getAccessToken } from "@/util/getAccessToken";
 import { Commit } from "@/models/db/commit";
 import { maybeCreateSnapshot } from "@/util/snapshotHelper";
+import { spotifyGet } from "@/util/requestHelper";
+
+interface SpotifyPlaylistTracksResponse {
+  items: Array<{
+    track: {
+      id: string;
+      uri: string;
+    } | null;
+  }>;
+  next: string | null;
+  total: number;
+}
+
+async function fetchAllPlaylistTracks(
+  playlistId: string,
+  accessToken: string
+): Promise<string[]> {
+  const trackIds: string[] = [];
+  let nextPath: string | null = `/playlists/${playlistId}/tracks?limit=100`;
+
+  while (nextPath) {
+    const data: SpotifyPlaylistTracksResponse =
+      await spotifyGet<SpotifyPlaylistTracksResponse>(nextPath, accessToken);
+
+    for (const item of data.items) {
+      if (item.track?.id) {
+        trackIds.push(item.track.id);
+      }
+    }
+
+    if (data.next) {
+      // Extract the path from the full URL
+      const parsed: URL = new URL(data.next);
+      nextPath = parsed.pathname.replace("/v1", "") + parsed.search;
+    } else {
+      nextPath = null;
+    }
+  }
+
+  return trackIds;
+}
 
 export const commitHandler = async (req: Request, res: Response) => {
   try {
@@ -25,22 +66,33 @@ export const commitHandler = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "userId is required" });
     }
 
-    if (
-      !Array.isArray(addedUris) ||
-      !Array.isArray(removedUris) ||
-      (addedUris.length === 0 && removedUris.length === 0)
-    ) {
+    if (!Array.isArray(addedUris) || !Array.isArray(removedUris)) {
       return res.status(400).json({
-        error:
-          "addedUris and removedUris must be arrays, and at least one change is required",
+        error: "addedUris and removedUris must be arrays",
       });
+    }
+
+    let addedTrackIds: string[];
+    let removedTrackIds: string[];
+
+    // If no changes passed, this is an initial check-in
+    // Fetch current tracks from Spotify and treat them all as "added"
+    if (addedUris.length === 0 && removedUris.length === 0) {
+      addedTrackIds = await fetchAllPlaylistTracks(playlistId, accessToken);
+      removedTrackIds = [];
+
+      if (addedTrackIds.length === 0) {
+        return res.status(400).json({
+          error: "Cannot check in an empty playlist",
+        });
+      }
+    } else {
+      addedTrackIds = addedUris.map((uri) => uri.split(":").pop() || uri);
+      removedTrackIds = removedUris.map((uri) => uri.split(":").pop() || uri);
     }
 
     const now = new Date();
     const commitId = `${userId}|${playlistId}|${now.toISOString()}`;
-
-    const addedTrackIds = addedUris.map((uri) => uri.split(":").pop() || uri);
-    const removedTrackIds = removedUris.map((uri) => uri.split(":").pop() || uri);
 
     const commit = new Commit({
       commitId,
