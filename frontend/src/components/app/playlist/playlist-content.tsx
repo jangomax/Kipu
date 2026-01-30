@@ -124,6 +124,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     setHasCheckedForChanges(false);
     setPendingDiff(null);
     setShowCommitDialog(false);
+    setCheckoutData(null);
   }, [playlistId]);
 
   useEffect(() => {
@@ -361,7 +362,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
           </Alert>
         )}
 
-        {checkoutData && (
+        {checkoutData && checkoutData.commitId !== commits[0]?.commitId && (
           <Alert color="blue" title="Viewing Historical Version">
             <Stack gap="sm">
               <Text size="sm">
@@ -379,17 +380,6 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
             </Stack>
           </Alert>
         )}
-
-        {/* <Group justify="flex-end">
-          <Button
-            leftSection={<IconHistory size={18} />}
-            variant="light"
-            onClick={() => setDrawerOpened(true)}
-            size="sm"
-          >
-            {!isMobile && 'View History'}
-          </Button>
-        </Group> */}
 
         <Group align="flex-start" gap="md" wrap="wrap">
           {coverImage ? (
