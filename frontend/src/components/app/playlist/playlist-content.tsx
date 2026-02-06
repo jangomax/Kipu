@@ -58,12 +58,9 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   } = usePlaylists();
 
   const {
-    data: tracksPages,
+    data: allTracks,
     isLoading: isLoadingTracks,
     isError: tracksError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
   } = usePlaylistTracks(playlistId);
 
   const { data: commitsData } = useCommits(playlistId);
@@ -77,28 +74,28 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
       : undefined,
   );
 
-  const allTracks = tracksPages?.pages.flatMap((page) => page.items) ?? [];
+  const tracks = allTracks ?? [];
   const commits = commitsData?.commits ?? [];
 
   const currentTrackIds = useMemo(() => {
     const ids: string[] = [];
-    allTracks.forEach((item) => {
+    tracks.forEach((item) => {
       if (item.track?.id) {
         ids.push(item.track.id);
       }
     });
     return ids;
-  }, [allTracks]);
+  }, [tracks]);
 
   const currentTrackMap = useMemo(() => {
     const map = new Map<string, SpotifyPlaylistTrackItem['track']>();
-    allTracks.forEach((item) => {
+    tracks.forEach((item) => {
       if (item.track?.id) {
         map.set(item.track.id, item.track);
       }
     });
     return map;
-  }, [allTracks]);
+  }, [tracks]);
 
   const playlist = useMemo(
     () => playlists?.items.find((item) => item.id === playlistId),
@@ -313,7 +310,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     );
   }
 
-  const displayTracks = checkoutData ? checkoutTracks : allTracks;
+  const displayTracks = checkoutData ? checkoutTracks : tracks;
 
   return (
     <>
@@ -453,18 +450,6 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
           <PlaylistTracksTable items={displayTracks} playlistId={playlistId} />
         )}
 
-        {!checkoutData && hasNextPage && (
-          <Group justify="center" mt="md">
-            <Button
-              variant="subtle"
-              fullWidth
-              onClick={() => fetchNextPage()}
-              loading={isFetchingNextPage}
-            >
-              {isFetchingNextPage ? 'Loading more...' : 'Load more'}
-            </Button>
-          </Group>
-        )}
       </Stack>
     </>
   );
