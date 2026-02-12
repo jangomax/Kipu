@@ -1,14 +1,34 @@
-import { useEffect, useState } from "react";
-import { AppShell, Autocomplete, Title, ActionIcon } from "@mantine/core";
-import { IconArrowRight, IconSearch } from "@tabler/icons-react";
-import router from "@/routes";
+import { useEffect, useMemo, useState } from 'react';
+import {
+  AppShell,
+  Autocomplete,
+  Title,
+  ActionIcon,
+  Avatar,
+  Menu,
+  UnstyledButton,
+  useMantineColorScheme,
+} from '@mantine/core';
+import { IconArrowRight, IconSearch, IconLogout2, IconMoonStars, IconSun } from '@tabler/icons-react';
+import { useSpotifyUser } from '@/hooks/useSpotifyUser';
+import { queryClient } from '@/util/api-helper';
+import { clearTokens } from '@/util/auth';
+import router from '@/routes';
 
 export const AppNavbar = () => {
+  const { colorScheme, setColorScheme } = useMantineColorScheme();
+  const { data: user } = useSpotifyUser();
   const initialLocation = router.state.location;
-  const initialQuery = new URLSearchParams(initialLocation?.search ?? "").get("query") ?? "";
+  const initialQuery = new URLSearchParams(initialLocation?.search ?? '').get('query') ?? '';
   const [value, setValue] = useState(initialQuery);
   const [showSearch, setShowSearch] = useState(
-    initialLocation?.pathname?.startsWith("/app") ?? false,
+    initialLocation?.pathname?.startsWith('/app') ?? false,
+  );
+
+  const profileImage = user?.images?.[0]?.url;
+  const profileFallback = useMemo(
+    () => user?.displayName?.trim().charAt(0).toUpperCase() || 'U',
+    [user?.displayName],
   );
 
   useEffect(() => {
@@ -17,9 +37,9 @@ export const AppNavbar = () => {
     }: {
       location: { pathname: string; search?: string };
     }) => {
-      const params = new URLSearchParams(location.search ?? "");
-      setValue(params.get("query") ?? "");
-      setShowSearch(location.pathname?.startsWith("/app") ?? false);
+      const params = new URLSearchParams(location.search ?? '');
+      setValue(params.get('query') ?? '');
+      setShowSearch(location.pathname?.startsWith('/app') ?? false);
     };
 
     const unsubscribe = router.subscribe(handleLocationChange);
@@ -34,11 +54,21 @@ export const AppNavbar = () => {
     const trimmed = value.trim();
 
     if (!trimmed) {
-      router.navigate("/app");
+      router.navigate('/app');
       return;
     }
 
     router.navigate(`/app?query=${encodeURIComponent(trimmed)}`);
+  };
+
+  const handleLogout = () => {
+    clearTokens();
+    queryClient.clear();
+    router.navigate('/');
+  };
+
+  const handleToggleColorScheme = () => {
+    setColorScheme(colorScheme === 'dark' ? 'light' : 'dark');
   };
 
   return (
@@ -85,7 +115,30 @@ export const AppNavbar = () => {
           }}
         />
       </div>
-    )}
-  </AppShell.Header>
+      )}
+      {showSearch && user && (
+        <Menu width={190} position="bottom-end" withinPortal>
+          <Menu.Target>
+            <UnstyledButton aria-label="Open profile menu">
+              <Avatar src={profileImage} radius="lg" size={32} name={user.displayName}>
+                {profileFallback}
+              </Avatar>
+            </UnstyledButton>
+          </Menu.Target>
+          <Menu.Dropdown>
+            <Menu.Label>{user.displayName || 'Spotify user'}</Menu.Label>
+            <Menu.Item
+              leftSection={colorScheme === 'dark' ? <IconSun size={16} /> : <IconMoonStars size={16} />}
+              onClick={handleToggleColorScheme}
+            >
+              {colorScheme === 'dark' ? 'Light mode' : 'Dark mode'}
+            </Menu.Item>
+            <Menu.Item color="red" leftSection={<IconLogout2 size={16} />} onClick={handleLogout}>
+              Logout
+            </Menu.Item>
+          </Menu.Dropdown>
+        </Menu>
+      )}
+    </AppShell.Header>
   );
 };
