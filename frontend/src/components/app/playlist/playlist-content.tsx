@@ -43,6 +43,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   const [hasCheckedForChanges, setHasCheckedForChanges] = useState(false);
   const [isCheckingDiff, setIsCheckingDiff] = useState(false);
   const [, setIsSyncingDiff] = useState(false);
+  const [isLoadingHistoricalVersion, setIsLoadingHistoricalVersion] = useState(false);
   const isMobile = useUiStore((state) => state.isMobile);
 
   const { data: user } = useSpotifyUser();
@@ -122,6 +123,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     setPendingDiff(null);
     setShowCommitDialog(false);
     setCheckoutData(null);
+    setIsLoadingHistoricalVersion(false);
   }, [playlistId]);
 
   useEffect(() => {
@@ -227,6 +229,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
 
   const handleCommitSelect = useCallback(
     (commit: Commit) => {
+      setIsLoadingHistoricalVersion(true);
       checkout(
         {
           playlistId,
@@ -235,7 +238,11 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
         {
           onSuccess: (data) => {
             setCheckoutData(data);
+            setIsLoadingHistoricalVersion(false);
             setDrawerOpened(false);
+          },
+          onError: () => {
+            setIsLoadingHistoricalVersion(false);
           },
         },
       );
@@ -244,6 +251,7 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   );
 
   const handleReturnToHead = useCallback(() => {
+    setIsLoadingHistoricalVersion(false);
     setCheckoutData(null);
   }, []);
 
@@ -441,10 +449,10 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
           </Button>
         </Group>
 
-        {isLoadingCheckoutTracks && checkoutData ? (
+        {isLoadingHistoricalVersion || (isLoadingCheckoutTracks && checkoutData) ? (
           <Stack align="center" justify="center" style={{ minHeight: 240 }}>
             <Loader size="lg" />
-            <Text c="dimmed">Loading tracks from this version...</Text>
+            <Text c="dimmed">Loading playlist...</Text>
           </Stack>
         ) : (
           <PlaylistTracksTable items={displayTracks} playlistId={playlistId} />

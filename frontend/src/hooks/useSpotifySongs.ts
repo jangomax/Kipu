@@ -8,6 +8,18 @@ interface GetTracksResponse {
   tracks: SpotifyTrack[];
 }
 
+const TRACKS_BATCH_SIZE = 50;
+
+function chunkTrackIds(trackIds: string[]): string[][] {
+  const chunks: string[][] = [];
+
+  for (let i = 0; i < trackIds.length; i += TRACKS_BATCH_SIZE) {
+    chunks.push(trackIds.slice(i, i + TRACKS_BATCH_SIZE));
+  }
+
+  return chunks;
+}
+
 export const useSpotifySongs = (trackIds: string[] | undefined) => {
   return useQuery({
     queryKey: ['spotifySongs', trackIds],
@@ -23,7 +35,14 @@ export const useSpotifySongs = (trackIds: string[] | undefined) => {
       }
 
       try {
-        return await spotifyGet<GetTracksResponse>(`/tracks?ids=${trackIds.join(',')}`);
+        const trackIdChunks = chunkTrackIds(trackIds);
+        const responses = await Promise.all(
+          trackIdChunks.map((chunk) => spotifyGet<GetTracksResponse>(`/tracks?ids=${chunk.join(',')}`)),
+        );
+
+        return {
+          tracks: responses.flatMap((response) => response.tracks),
+        };
       } catch (error) {
         if (error instanceof AxiosError && error.response?.status === 401) {
           clearTokens();
