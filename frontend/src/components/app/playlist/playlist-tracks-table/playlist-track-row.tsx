@@ -35,6 +35,8 @@ export interface PlaylistTrackRowProps {
   index: number;
   onRemoveSong?: () => void;
   queueUris?: string[];
+  diffStatus?: 'added' | 'removed' | 'unchanged';
+  showSongControls?: boolean;
 }
 
 export const PlaylistTrackRow = ({
@@ -43,6 +45,8 @@ export const PlaylistTrackRow = ({
   index,
   onRemoveSong,
   queueUris,
+  diffStatus,
+  showSongControls = true,
 }: PlaylistTrackRowProps) => {
   const track = item.track;
 
@@ -81,8 +85,20 @@ export const PlaylistTrackRow = ({
     }
   };
 
+  const rowBackgroundColor =
+    diffStatus === 'added'
+      ? 'var(--mantine-color-green-0)'
+      : diffStatus === 'removed'
+        ? 'var(--mantine-color-red-0)'
+        : undefined;
+
   return (
-    <Table.Tr key={`${track.id}-${item.addedAt}`} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+    <Table.Tr
+      key={`${track.id}-${item.addedAt}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ backgroundColor: rowBackgroundColor }}
+    >
       <Table.Td width={50}>
         <Center>
           {isHovered ? (
@@ -144,7 +160,9 @@ export const PlaylistTrackRow = ({
         </Text>
       </Table.Td>
       <Table.Td width={60}>
-        <PlaylistSongControls track={track} playlistId={playlistId} onRemoveSong={onRemoveSong} />
+        {showSongControls && (
+          <PlaylistSongControls track={track} playlistId={playlistId} onRemoveSong={onRemoveSong} />
+        )}
         {playError && (
           <Text size="xs" c="red">
             {playError}

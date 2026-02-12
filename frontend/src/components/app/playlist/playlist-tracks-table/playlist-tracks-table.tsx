@@ -6,12 +6,21 @@ import { PlaylistTrackRow } from './playlist-track-row';
 import { PlaylistSongControls } from '../../song-controls/song-controls';
 import { playTrackOnWebPlayer } from '@/util/spotify-playback';
 
-export interface PlaylistTracksTableProps {
-  items: SpotifyPlaylistTrackItem[];
-  playlistId: string;
+export interface PlaylistTrackDisplayItem extends SpotifyPlaylistTrackItem {
+  diffStatus?: 'added' | 'removed' | 'unchanged';
 }
 
-export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTableProps) => {
+export interface PlaylistTracksTableProps {
+  items: PlaylistTrackDisplayItem[];
+  playlistId: string;
+  showSongControls?: boolean;
+}
+
+export const PlaylistTracksTable = ({
+  items,
+  playlistId,
+  showSongControls = true,
+}: PlaylistTracksTableProps) => {
   const validItems = items.filter((item) => item.track);
   const [isPlayingId, setIsPlayingId] = useState<string | null>(null);
   const queueUris = validItems.map((item) => `spotify:track:${item.track!.id}`);
@@ -55,7 +64,12 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                 p="sm"
                 style={{
                   borderRadius: '8px',
-                  backgroundColor: 'var(--mantine-color-default-hover)',
+                  backgroundColor:
+                    item.diffStatus === 'added'
+                      ? 'var(--mantine-color-green-0)'
+                      : item.diffStatus === 'removed'
+                        ? 'var(--mantine-color-red-0)'
+                        : 'var(--mantine-color-default-hover)',
                 }}
               >
                 {trackImage ? (
@@ -95,7 +109,7 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                 >
                   <IconPlayerPlayFilled size={16} />
                 </ActionIcon>
-                <PlaylistSongControls track={track} playlistId={playlistId} />
+                {showSongControls && <PlaylistSongControls track={track} playlistId={playlistId} />}
               </Group>
             );
           })}
@@ -127,6 +141,8 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                 playlistId={playlistId}
                 index={index}
                 queueUris={queueUris}
+                diffStatus={item.diffStatus}
+                showSongControls={showSongControls}
               />
             ))}
           </Table.Tbody>
