@@ -6,12 +6,21 @@ import { PlaylistTrackRow } from './playlist-track-row';
 import { PlaylistSongControls } from '../../song-controls/song-controls';
 import { playTrackOnWebPlayer } from '@/util/spotify-playback';
 
-export interface PlaylistTracksTableProps {
-  items: SpotifyPlaylistTrackItem[];
-  playlistId: string;
+export interface PlaylistTrackDisplayItem extends SpotifyPlaylistTrackItem {
+  diffStatus?: 'added' | 'removed' | 'unchanged';
 }
 
-export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTableProps) => {
+export interface PlaylistTracksTableProps {
+  items: PlaylistTrackDisplayItem[];
+  playlistId: string;
+  showSongControls?: boolean;
+}
+
+export const PlaylistTracksTable = ({
+  items,
+  playlistId,
+  showSongControls = true,
+}: PlaylistTracksTableProps) => {
   const validItems = items.filter((item) => item.track);
   const [isPlayingId, setIsPlayingId] = useState<string | null>(null);
   const queueUris = validItems.map((item) => `spotify:track:${item.track!.id}`);
@@ -47,6 +56,9 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
             const track = item.track!;
             const trackImage = track.album.images?.[0]?.url;
             const artists = track.artists.map((artist) => artist.name).join(', ');
+            const isDiffRow = item.diffStatus === 'added' || item.diffStatus === 'removed';
+            const primaryColor = isDiffRow ? '#ffffff' : undefined;
+            const secondaryColor = isDiffRow ? 'rgba(255, 255, 255, 0.88)' : 'dimmed';
 
             return (
               <Group
@@ -55,7 +67,18 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                 p="sm"
                 style={{
                   borderRadius: '8px',
-                  backgroundColor: 'var(--mantine-color-default-hover)',
+                  backgroundColor:
+                    item.diffStatus === 'added'
+                      ? 'var(--mantine-color-green-6)'
+                      : item.diffStatus === 'removed'
+                        ? 'var(--mantine-color-red-6)'
+                        : 'var(--mantine-color-default-hover)',
+                  borderLeft:
+                    item.diffStatus === 'added'
+                      ? '4px solid var(--mantine-color-green-9)'
+                      : item.diffStatus === 'removed'
+                        ? '4px solid var(--mantine-color-red-9)'
+                        : '4px solid transparent',
                 }}
               >
                 {trackImage ? (
@@ -72,22 +95,22 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                       justifyContent: 'center',
                     }}
                   >
-                    <Text size="xs" c="dimmed">
+                    <Text size="xs" c={secondaryColor}>
                       No art
                     </Text>
                   </div>
                 )}
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                  <Text fw={600} lineClamp={1}>
+                  <Text fw={600} lineClamp={1} c={primaryColor}>
                     {track.name}
                   </Text>
-                  <Text size="sm" c="dimmed" lineClamp={1}>
+                  <Text size="sm" c={secondaryColor} lineClamp={1}>
                     {artists}
                   </Text>
                 </Stack>
                 <ActionIcon
                   variant="subtle"
-                  color="gray"
+                  color={isDiffRow ? 'light' : 'gray'}
                   radius="xl"
                   onClick={() => handlePlay(track.id)}
                   loading={isPlayingId === track.id}
@@ -95,7 +118,7 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                 >
                   <IconPlayerPlayFilled size={16} />
                 </ActionIcon>
-                <PlaylistSongControls track={track} playlistId={playlistId} />
+                {showSongControls && <PlaylistSongControls track={track} playlistId={playlistId} />}
               </Group>
             );
           })}
@@ -127,6 +150,8 @@ export const PlaylistTracksTable = ({ items, playlistId }: PlaylistTracksTablePr
                 playlistId={playlistId}
                 index={index}
                 queueUris={queueUris}
+                diffStatus={item.diffStatus}
+                showSongControls={showSongControls}
               />
             ))}
           </Table.Tbody>

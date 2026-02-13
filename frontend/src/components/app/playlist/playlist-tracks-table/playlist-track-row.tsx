@@ -35,6 +35,8 @@ export interface PlaylistTrackRowProps {
   index: number;
   onRemoveSong?: () => void;
   queueUris?: string[];
+  diffStatus?: 'added' | 'removed' | 'unchanged';
+  showSongControls?: boolean;
 }
 
 export const PlaylistTrackRow = ({
@@ -43,6 +45,8 @@ export const PlaylistTrackRow = ({
   index,
   onRemoveSong,
   queueUris,
+  diffStatus,
+  showSongControls = true,
 }: PlaylistTrackRowProps) => {
   const track = item.track;
 
@@ -81,8 +85,29 @@ export const PlaylistTrackRow = ({
     }
   };
 
+  const rowBackgroundColor =
+    diffStatus === 'added'
+      ? 'var(--mantine-color-green-6)'
+      : diffStatus === 'removed'
+        ? 'var(--mantine-color-red-6)'
+        : undefined;
+  const rowBorderLeft =
+    diffStatus === 'added'
+      ? '4px solid var(--mantine-color-green-9)'
+      : diffStatus === 'removed'
+        ? '4px solid var(--mantine-color-red-9)'
+        : '4px solid transparent';
+  const isDiffRow = diffStatus === 'added' || diffStatus === 'removed';
+  const primaryColor = isDiffRow ? '#ffffff' : undefined;
+  const secondaryColor = isDiffRow ? 'rgba(255, 255, 255, 0.88)' : 'dimmed';
+
   return (
-    <Table.Tr key={`${track.id}-${item.addedAt}`} onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)}>
+    <Table.Tr
+      key={`${track.id}-${item.addedAt}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ backgroundColor: rowBackgroundColor, borderLeft: rowBorderLeft }}
+    >
       <Table.Td width={50}>
         <Center>
           {isHovered ? (
@@ -100,7 +125,7 @@ export const PlaylistTrackRow = ({
               <IconPlayerPlayFilled size={14} color="var(--mantine-color-gray-5)" />
             </ActionIcon>
           ) : (
-            <Text size="sm" c="dimmed" ta="center">
+            <Text size="sm" c={secondaryColor} ta="center">
               {index + 1}
             </Text>
           )}
@@ -121,7 +146,7 @@ export const PlaylistTrackRow = ({
               justifyContent: 'center',
             }}
           >
-            <Text size="xs" c="dimmed">
+            <Text size="xs" c={secondaryColor}>
               No art
             </Text>
           </div>
@@ -129,22 +154,28 @@ export const PlaylistTrackRow = ({
       </Table.Td>
       <Table.Td>
         <Stack gap={4}>
-          <Text fw={600}>{track.name}</Text>
-          <Text size="sm" c="dimmed">
+          <Text fw={600} c={primaryColor}>
+            {track.name}
+          </Text>
+          <Text size="sm" c={secondaryColor}>
             {artists}
           </Text>
         </Stack>
       </Table.Td>
       <Table.Td>
-        <Text size="sm">{track.album.name}</Text>
+        <Text size="sm" c={primaryColor}>
+          {track.album.name}
+        </Text>
       </Table.Td>
       <Table.Td width={90}>
-        <Text size="sm" c="dimmed">
+        <Text size="sm" c={secondaryColor}>
           {formatDuration(durationMs)}
         </Text>
       </Table.Td>
       <Table.Td width={60}>
-        <PlaylistSongControls track={track} playlistId={playlistId} onRemoveSong={onRemoveSong} />
+        {showSongControls && (
+          <PlaylistSongControls track={track} playlistId={playlistId} onRemoveSong={onRemoveSong} />
+        )}
         {playError && (
           <Text size="xs" c="red">
             {playError}
