@@ -56,6 +56,9 @@ export const PlaylistTracksTable = ({
             const track = item.track!;
             const trackImage = track.album.images?.[0]?.url;
             const artists = track.artists.map((artist) => artist.name).join(', ');
+            const isDiffRow = item.diffStatus === 'added' || item.diffStatus === 'removed';
+            const primaryColor = isDiffRow ? '#ffffff' : undefined;
+            const secondaryColor = isDiffRow ? 'rgba(255, 255, 255, 0.88)' : 'dimmed';
 
             return (
               <Group
@@ -66,10 +69,16 @@ export const PlaylistTracksTable = ({
                   borderRadius: '8px',
                   backgroundColor:
                     item.diffStatus === 'added'
-                      ? 'var(--mantine-color-green-0)'
+                      ? 'var(--mantine-color-green-6)'
                       : item.diffStatus === 'removed'
-                        ? 'var(--mantine-color-red-0)'
+                        ? 'var(--mantine-color-red-6)'
                         : 'var(--mantine-color-default-hover)',
+                  borderLeft:
+                    item.diffStatus === 'added'
+                      ? '4px solid var(--mantine-color-green-9)'
+                      : item.diffStatus === 'removed'
+                        ? '4px solid var(--mantine-color-red-9)'
+                        : '4px solid transparent',
                 }}
               >
                 {trackImage ? (
@@ -86,22 +95,22 @@ export const PlaylistTracksTable = ({
                       justifyContent: 'center',
                     }}
                   >
-                    <Text size="xs" c="dimmed">
+                    <Text size="xs" c={secondaryColor}>
                       No art
                     </Text>
                   </div>
                 )}
                 <Stack gap={4} style={{ flex: 1, minWidth: 0 }}>
-                  <Text fw={600} lineClamp={1}>
+                  <Text fw={600} lineClamp={1} c={primaryColor}>
                     {track.name}
                   </Text>
-                  <Text size="sm" c="dimmed" lineClamp={1}>
+                  <Text size="sm" c={secondaryColor} lineClamp={1}>
                     {artists}
                   </Text>
                 </Stack>
                 <ActionIcon
                   variant="subtle"
-                  color="gray"
+                  color={isDiffRow ? 'light' : 'gray'}
                   radius="xl"
                   onClick={() => handlePlay(track.id)}
                   loading={isPlayingId === track.id}

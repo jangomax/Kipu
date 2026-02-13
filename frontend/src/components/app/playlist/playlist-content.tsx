@@ -2,13 +2,15 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   Alert,
   Anchor,
+  Badge,
   Button,
+  Divider,
   Drawer,
   Group,
   Image,
   Loader,
   Paper,
-  Select,
+  SimpleGrid,
   Stack,
   Text,
   Title,
@@ -91,30 +93,58 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   );
   const tracks = allTracks ?? [];
   const commits = commitsData?.commits ?? [];
+  const latestCommit = commits[0];
   const isHistoricalView = !!checkoutData && checkoutData.commitId !== commits[0]?.commitId;
-  const selectedHistoricalCommit = useMemo(
+  const selectedCommit = useMemo(
     () => commits.find((commit) => commit.commitId === checkoutData?.commitId),
     [commits, checkoutData?.commitId],
+  );
+  const activeCommit = isHistoricalView ? selectedCommit : latestCommit;
+  const activeCommitId = activeCommit?.commitId;
+  const defaultCompareCommitId = activeCommit?.parentId || ROOT_COMPARE_VALUE;
+
+  const { data: activeCommitData, isLoading: isLoadingActiveCommitData } = useCheckoutCommit(
+    !isHistoricalView && isDiffMode ? playlistId : undefined,
+    !isHistoricalView && isDiffMode ? activeCommitId : undefined,
   );
   const compareCommitForDiffId =
     isDiffMode && compareCommitId && compareCommitId !== ROOT_COMPARE_VALUE ? compareCommitId : undefined;
 
   const { data: compareCommitData, isLoading: isLoadingCompareCommit } = useCheckoutCommit(
-    isHistoricalView ? playlistId : undefined,
+    isDiffMode ? playlistId : undefined,
     compareCommitForDiffId,
   );
+  const activeDiffTrackIds = useMemo(() => {
+    if (!isDiffMode || !activeCommit) {
+      return [];
+    }
+    if (isHistoricalView) {
+      return checkoutData?.tracks ?? [];
+    }
+    return activeCommitData?.tracks ?? [];
+  }, [isDiffMode, activeCommit, isHistoricalView, checkoutData, activeCommitData]);
+
   const historicalDiff = useMemo(() => {
-    if (!isHistoricalView || !isDiffMode || !checkoutData) {
+    if (!isDiffMode || !activeCommit) {
       return null;
     }
     const baselineTrackIds =
       compareCommitId === ROOT_COMPARE_VALUE ? [] : (compareCommitData?.tracks ?? []);
-    return computeDiff(checkoutData.tracks, baselineTrackIds);
-  }, [isHistoricalView, isDiffMode, checkoutData, compareCommitId, compareCommitData]);
-  const { data: diffRemovedTrackDetails, isLoading: isLoadingDiffRemovedTracks } = useSpotifySongs(
-    historicalDiff?.removedTrackIds && historicalDiff.removedTrackIds.length > 0
-      ? historicalDiff.removedTrackIds
-      : undefined,
+    return computeDiff(activeDiffTrackIds, baselineTrackIds);
+  }, [isDiffMode, activeCommit, compareCommitId, compareCommitData, activeDiffTrackIds]);
+
+  const compareTrackIds = isDiffMode
+    ? compareCommitId === ROOT_COMPARE_VALUE
+      ? []
+      : (compareCommitData?.tracks ?? [])
+    : [];
+  const activeTrackDetailsIds = isDiffMode ? Array.from(new Set(activeDiffTrackIds)) : undefined;
+  const compareTrackDetailsIds = isDiffMode ? Array.from(new Set(compareTrackIds)) : undefined;
+  const { data: activeDiffTrackDetails, isLoading: isLoadingActiveDiffTrackDetails } = useSpotifySongs(
+    activeTrackDetailsIds && activeTrackDetailsIds.length > 0 ? activeTrackDetailsIds : undefined,
+  );
+  const { data: compareDiffTrackDetails, isLoading: isLoadingCompareDiffTrackDetails } = useSpotifySongs(
+    compareTrackDetailsIds && compareTrackDetailsIds.length > 0 ? compareTrackDetailsIds : undefined,
   );
 
   const currentTrackIds = useMemo(() => {
@@ -168,15 +198,9 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
   }, [playlistId]);
 
   useEffect(() => {
-    if (!isHistoricalView) {
-      setIsDiffMode(false);
-      setCompareCommitId(null);
-      return;
-    }
-
     setIsDiffMode(false);
-    setCompareCommitId(selectedHistoricalCommit?.parentId || ROOT_COMPARE_VALUE);
-  }, [isHistoricalView, selectedHistoricalCommit?.commitId, selectedHistoricalCommit?.parentId]);
+    setCompareCommitId(defaultCompareCommitId);
+  }, [activeCommitId, defaultCompareCommitId]);
 
   useEffect(() => {
     if (checkoutData) {
@@ -307,6 +331,12 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
     setCheckoutData(null);
   }, []);
 
+  const handleSeeDiffFromTimeline = useCallback((commit: Commit) => {
+    setCompareCommitId(commit.commitId);
+    setIsDiffMode(true);
+    setDrawerOpened(false);
+  }, []);
+
   const handleCheckIn = useCallback(() => {
     if (!user?.id) return;
     checkIn(
@@ -333,68 +363,69 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
       }));
   }, [checkoutTracksData, checkoutData]);
 
-  const compareCommitOptions = useMemo(() => {
-    if (!checkoutData) {
-      return [];
-    }
-
-    const options: { value: string; label: string }[] = [];
-
-    if (!selectedHistoricalCommit?.parentId) {
-      options.push({ value: ROOT_COMPARE_VALUE, label: 'No parent (all tracks added)' });
-    }
-
-    commits
-      .filter((commit) => commit.commitId !== checkoutData.commitId)
-      .forEach((commit) => {
-        const isParent = commit.commitId === selectedHistoricalCommit?.parentId;
-        options.push({
-          value: commit.commitId,
-          label: `${isParent ? 'Parent • ' : ''}${new Date(commit.timestamp).toLocaleString()}`,
-        });
-      });
-
-    return options;
-  }, [checkoutData, commits, selectedHistoricalCommit?.parentId]);
-
-  const diffDisplayTracks = useMemo((): PlaylistTrackDisplayItem[] => {
-    if (!historicalDiff) {
-      return checkoutTracks;
-    }
-
-    const addedCounts = buildCountMap(historicalDiff.addedTrackIds);
-    const removedTrackMap = new Map<string, SpotifyPlaylistTrackItem['track']>();
-    diffRemovedTrackDetails?.tracks?.forEach((track) => {
-      removedTrackMap.set(track.id, track);
+  const activeTrackDetailMap = useMemo(() => {
+    const map = new Map<string, SpotifyPlaylistTrackItem['track']>();
+    activeDiffTrackDetails?.tracks?.forEach((track) => {
+      map.set(track.id, track);
     });
+    return map;
+  }, [activeDiffTrackDetails]);
 
-    const rows: PlaylistTrackDisplayItem[] = checkoutTracks.map((item) => {
-      const trackId = item.track?.id;
-      if (!trackId) {
-        return { ...item, diffStatus: 'unchanged' };
-      }
-      const remainingAdditions = addedCounts.get(trackId) || 0;
-      if (remainingAdditions > 0) {
-        addedCounts.set(trackId, remainingAdditions - 1);
-        return { ...item, diffStatus: 'added' };
-      }
-      return { ...item, diffStatus: 'unchanged' };
+  const compareTrackDetailMap = useMemo(() => {
+    const map = new Map<string, SpotifyPlaylistTrackItem['track']>();
+    compareDiffTrackDetails?.tracks?.forEach((track) => {
+      map.set(track.id, track);
     });
+    return map;
+  }, [compareDiffTrackDetails]);
 
-    historicalDiff.removedTrackIds.forEach((trackId, index) => {
-      const track = removedTrackMap.get(trackId);
-      if (!track) {
-        return;
-      }
-      rows.push({
-        addedAt: `${checkoutData?.timestamp || 'diff'}-removed-${index}`,
-        track,
-        diffStatus: 'removed',
-      });
-    });
+  const targetDiffTracks = useMemo((): PlaylistTrackDisplayItem[] => {
+    const addedCounts = buildCountMap(historicalDiff?.addedTrackIds ?? []);
+    return activeDiffTrackIds
+      .map((trackId, index) => {
+        const track = activeTrackDetailMap.get(trackId);
+        if (!track) {
+          return null;
+        }
 
-    return rows;
-  }, [historicalDiff, checkoutTracks, diffRemovedTrackDetails, checkoutData]);
+        const count = addedCounts.get(trackId) || 0;
+        const diffStatus = count > 0 ? 'added' : 'unchanged';
+        if (count > 0) {
+          addedCounts.set(trackId, count - 1);
+        }
+
+        return {
+          addedAt: `${activeCommitId || 'active'}-${index}`,
+          track,
+          diffStatus,
+        } as PlaylistTrackDisplayItem;
+      })
+      .filter((item): item is PlaylistTrackDisplayItem => !!item);
+  }, [historicalDiff?.addedTrackIds, activeDiffTrackIds, activeTrackDetailMap, activeCommitId]);
+
+  const compareDiffTracks = useMemo((): PlaylistTrackDisplayItem[] => {
+    const removedCounts = buildCountMap(historicalDiff?.removedTrackIds ?? []);
+    return compareTrackIds
+      .map((trackId, index) => {
+        const track = compareTrackDetailMap.get(trackId);
+        if (!track) {
+          return null;
+        }
+
+        const count = removedCounts.get(trackId) || 0;
+        const diffStatus = count > 0 ? 'removed' : 'unchanged';
+        if (count > 0) {
+          removedCounts.set(trackId, count - 1);
+        }
+
+        return {
+          addedAt: `${compareCommitId || ROOT_COMPARE_VALUE}-${index}`,
+          track,
+          diffStatus,
+        } as PlaylistTrackDisplayItem;
+      })
+      .filter((item): item is PlaylistTrackDisplayItem => !!item);
+  }, [historicalDiff?.removedTrackIds, compareTrackIds, compareTrackDetailMap, compareCommitId]);
 
   const loading = isLoadingPlaylists || isLoadingTracks;
   const coverImage = playlist?.images?.[0]?.url;
@@ -435,16 +466,18 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
 
   const isLoadingDiffData =
     isDiffMode &&
-    !!checkoutData &&
+    !!activeCommit &&
     (isLoadingCompareCommit ||
+      (!isHistoricalView && isLoadingActiveCommitData) ||
       (compareCommitId !== ROOT_COMPARE_VALUE && !!compareCommitForDiffId && !compareCommitData) ||
-      isLoadingDiffRemovedTracks);
+      (!isHistoricalView && !!activeCommitId && !activeCommitData) ||
+      isLoadingActiveDiffTrackDetails ||
+      isLoadingCompareDiffTrackDetails);
 
-  const displayTracks: PlaylistTrackDisplayItem[] = checkoutData
-    ? isDiffMode
-      ? diffDisplayTracks
-      : checkoutTracks
-    : tracks;
+  const displayTracks: PlaylistTrackDisplayItem[] = checkoutData ? checkoutTracks : tracks;
+  const compareCommit = commits.find((commit) => commit.commitId === compareCommitId);
+  const addedCount = historicalDiff?.addedTrackIds.length ?? 0;
+  const removedCount = historicalDiff?.removedTrackIds.length ?? 0;
 
   return (
     <>
@@ -467,7 +500,10 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
         <CommitTimeline
           commits={commits}
           onCommitSelect={handleCommitSelect}
+          selectedCommitId={activeCommitId ?? null}
           playlistId={playlistId}
+          onSeeDiff={handleSeeDiffFromTimeline}
+          compareCommitId={isDiffMode ? compareCommitId : null}
         />
       </Drawer>
 
@@ -541,36 +577,25 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
           <Stack gap="xs" style={{ flex: 1, minWidth: 0 }}>
             <Title order={2} style={{ fontSize: 'clamp(1.25rem, 5vw, 2rem)' }}>
               {playlist.name}
-              {checkoutData && (
+              {activeCommit && (
                 <Text component="span" size="lg" c="dimmed" fw={400}>
                   {' '}
-                  @ {new Date(checkoutData.timestamp).toLocaleString()}
+                  @{' '}
+                  {new Date(
+                    isHistoricalView ? (checkoutData?.timestamp ?? activeCommit.timestamp) : activeCommit.timestamp,
+                  ).toLocaleString()}
                 </Text>
               )}
             </Title>
-            {isHistoricalView && (
-              <Group gap="sm" wrap="wrap">
-                <Button
-                  size="xs"
-                  variant={isDiffMode ? 'filled' : 'light'}
-                  onClick={() => setIsDiffMode((current) => !current)}
-                >
-                  {isDiffMode ? 'Hide Diff' : 'View Diff'}
-                </Button>
-                {isDiffMode && (
-                  <Select
-                    size="xs"
-                    w={{ base: 240, sm: 320 }}
-                    label="Compare against"
-                    data={compareCommitOptions}
-                    value={compareCommitId}
-                    onChange={(value) => setCompareCommitId(value)}
-                    placeholder="Select a commit"
-                    searchable
-                    allowDeselect={false}
-                  />
-                )}
-              </Group>
+            {isDiffMode && (
+              <Text size="xs" c="dimmed">
+                Comparing against{' '}
+                {compareCommitId === ROOT_COMPARE_VALUE
+                  ? 'no parent'
+                  : compareCommit
+                    ? new Date(compareCommit.timestamp).toLocaleString()
+                    : 'selected commit'}
+              </Text>
             )}
             {playlist.description && <Text size="sm">{playlist.description}</Text>}
             <Text size="sm" c="dimmed">
@@ -599,11 +624,64 @@ export const PlaylistContent = ({ playlistId }: PlaylistContentProps) => {
           </Button>
         </Group>
 
-        {(isLoadingHistoricalVersion || (isLoadingCheckoutTracks && checkoutData) || isLoadingDiffData) &&
-        checkoutData ? (
+        {isLoadingHistoricalVersion || (isLoadingCheckoutTracks && checkoutData) || isLoadingDiffData ? (
           <Stack align="center" justify="center" style={{ minHeight: 240 }}>
             <Loader size="lg" />
             <Text c="dimmed">Loading playlist...</Text>
+          </Stack>
+        ) : isDiffMode && activeCommit ? (
+          <Stack gap="md">
+            <Group justify="space-between" align="center">
+              <Group gap="xs">
+                <Badge color="green" variant="filled">
+                  +{addedCount}
+                </Badge>
+                <Badge color="red" variant="filled">
+                  -{removedCount}
+                </Badge>
+              </Group>
+              <Button size="xs" variant="light" onClick={() => setIsDiffMode(false)}>
+                Exit Diff
+              </Button>
+            </Group>
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
+              <Paper withBorder radius="md" p="sm">
+                <Stack gap="xs">
+                  <Group justify="space-between" align="center">
+                    <Text fw={600}>Base Commit</Text>
+                    <Text size="xs" c="dimmed">
+                      {compareCommitId === ROOT_COMPARE_VALUE
+                        ? 'No parent'
+                        : compareCommit
+                          ? new Date(compareCommit.timestamp).toLocaleString()
+                          : 'Selected commit'}
+                    </Text>
+                  </Group>
+                  <Divider />
+                  <PlaylistTracksTable
+                    items={compareDiffTracks}
+                    playlistId={playlistId}
+                    showSongControls={false}
+                  />
+                </Stack>
+              </Paper>
+              <Paper withBorder radius="md" p="sm">
+                <Stack gap="xs">
+                  <Group justify="space-between" align="center">
+                    <Text fw={600}>{isHistoricalView ? 'Selected Commit' : 'Latest Commit'}</Text>
+                    <Text size="xs" c="dimmed">
+                      {new Date(activeCommit.timestamp).toLocaleString()}
+                    </Text>
+                  </Group>
+                  <Divider />
+                  <PlaylistTracksTable
+                    items={targetDiffTracks}
+                    playlistId={playlistId}
+                    showSongControls={false}
+                  />
+                </Stack>
+              </Paper>
+            </SimpleGrid>
           </Stack>
         ) : (
           <PlaylistTracksTable

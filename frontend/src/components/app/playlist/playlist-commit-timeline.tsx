@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Timeline,
   Text,
@@ -22,6 +22,7 @@ import {
   IconClock,
   IconBookmark,
   IconBookmarkFilled,
+  IconFileDiff,
 } from '@tabler/icons-react';
 import { Commit } from '@/types/commits';
 import { useKeepCommit } from '@/hooks/useKeepCommit';
@@ -100,9 +101,20 @@ interface CommitItemProps {
   isKept: boolean;
   onKeep: (commit: Commit) => void;
   onUnkeep: (commit: Commit, deletePlaylist: boolean) => void;
+  onSeeDiff?: (commit: Commit) => void;
+  isDiffTarget?: boolean;
 }
 
-function CommitItem({ commit, isSelected, onSelect, isKept, onKeep, onUnkeep }: CommitItemProps) {
+function CommitItem({
+  commit,
+  isSelected,
+  onSelect,
+  isKept,
+  onKeep,
+  onUnkeep,
+  onSeeDiff,
+  isDiffTarget = false,
+}: CommitItemProps) {
   const [showUnkeepModal, setShowUnkeepModal] = useState(false);
 
   const addedTrackIds = commit.diff.added.map((t) => t.trackId);
@@ -142,8 +154,8 @@ function CommitItem({ commit, isSelected, onSelect, isKept, onKeep, onUnkeep }: 
           width: '100%',
           padding: '12px',
           borderRadius: '8px',
-          border: `2px solid ${isSelected ? '#228be6' : 'transparent'}`,
-          backgroundColor: isSelected ? '#f0f7ff' : 'transparent',
+          border: `2px solid ${isSelected ? 'rgba(134, 142, 150, 0.45)' : 'transparent'}`,
+          backgroundColor: isSelected ? 'rgba(134, 142, 150, 0.14)' : 'transparent',
           transition: 'all 0.2s ease',
         }}
       >
@@ -178,6 +190,23 @@ function CommitItem({ commit, isSelected, onSelect, isKept, onKeep, onUnkeep }: 
               }}
             >
               {isKept ? <IconBookmarkFilled size={18} /> : <IconBookmark size={18} />}
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label={isSelected ? '' : isDiffTarget ? 'Viewing diff target' : 'See diff'}>
+            <ActionIcon
+              variant={isDiffTarget ? 'filled' : 'subtle'}
+              color={isDiffTarget ? 'grape' : 'gray'}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!isSelected) {
+                  onSeeDiff?.(commit);
+                }
+              }}
+              style={{ visibility: isSelected ? 'hidden' : 'visible' }}
+              aria-hidden={isSelected}
+              tabIndex={isSelected ? -1 : 0}
+            >
+              <IconFileDiff size={18} />
             </ActionIcon>
           </Tooltip>
         </Group>
@@ -224,6 +253,8 @@ interface CommitGroupProps {
   keptCommitIds: Set<string>;
   onKeep: (commit: Commit) => void;
   onUnkeep: (commit: Commit, deletePlaylist: boolean) => void;
+  onSeeDiff?: (commit: Commit) => void;
+  compareCommitId?: string | null;
 }
 
 function CommitGroupSection({
@@ -233,6 +264,8 @@ function CommitGroupSection({
   keptCommitIds,
   onKeep,
   onUnkeep,
+  onSeeDiff,
+  compareCommitId,
 }: CommitGroupProps) {
   const [isExpanded, setIsExpanded] = useState(group.period === 'today');
 
@@ -270,6 +303,8 @@ function CommitGroupSection({
               isKept={keptCommitIds.has(commit.commitId)}
               onKeep={onKeep}
               onUnkeep={onUnkeep}
+              onSeeDiff={onSeeDiff}
+              isDiffTarget={compareCommitId === commit.commitId}
             />
           ))}
         </Stack>
@@ -283,6 +318,8 @@ interface CommitTimelineProps {
   onCommitSelect?: (commit: Commit) => void;
   selectedCommitId?: string | null;
   playlistId: string;
+  onSeeDiff?: (commit: Commit) => void;
+  compareCommitId?: string | null;
 }
 
 export function CommitTimeline({
@@ -290,6 +327,8 @@ export function CommitTimeline({
   onCommitSelect,
   selectedCommitId = null,
   playlistId,
+  onSeeDiff,
+  compareCommitId,
 }: CommitTimelineProps) {
   const [localSelectedId, setLocalSelectedId] = useState<string | null>(selectedCommitId);
   const { data: user } = useSpotifyUser();
@@ -300,6 +339,10 @@ export function CommitTimeline({
 
   const keepMutation = useKeepCommit();
   const unkeepMutation = useUnkeepCommit();
+
+  useEffect(() => {
+    setLocalSelectedId(selectedCommitId);
+  }, [selectedCommitId]);
 
   const handleCommitSelect = (commit: Commit) => {
     setLocalSelectedId(commit.commitId);
@@ -358,6 +401,8 @@ export function CommitTimeline({
             keptCommitIds={keptCommitIds}
             onKeep={handleKeep}
             onUnkeep={handleUnkeep}
+            onSeeDiff={onSeeDiff}
+            compareCommitId={compareCommitId}
           />
         ))}
       </Timeline>
